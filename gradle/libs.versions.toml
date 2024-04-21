@@ -1,0 +1,33 @@
+[versions]
+junit = "6.0.3"
+mockito = "5.23.0"
+mockito-kotlin = "6.2.3"
+assertj = "3.27.7"
+slf4j = "2.0.16"
+dagger = "2.59.2"
+coroutines = "1.10.2"
+kotlin = "2.3.10"
+serialization = "1.10.0"
+
+[libraries]
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit = { module = "org.junit.jupiter:junit-jupiter" }
+junit-engine = { module = "org.junit.platform:junit-platform-launcher" }
+mockito = { module = "org.mockito:mockito-core", version.ref = "mockito" }
+mockito-extension = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockito" }
+mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockito-kotlin" }
+assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
+slf4j = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
+dagger = { module = "com.google.dagger:dagger", version.ref = "dagger" }
+dagger-compiler = { module = "com.google.dagger:dagger-compiler", version.ref = "dagger" }
+coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+
+[bundles]
+test = ["assertj", "coroutines-test", "mockito", "mockito-extension", "mockito-kotlin"]
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
