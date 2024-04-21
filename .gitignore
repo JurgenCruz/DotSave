@@ -1,0 +1,16 @@
+*.iml
+.gradle/
+.idea/compiler.xml
+.idea/dictionaries/
+.idea/discord.xml
+.idea/gradle.xml
+.idea/jarRepositories.xml
+.idea/kotlinc.xml
+.idea/libraries/
+.idea/markdown.xml
+.idea/modules.xml
+.idea/packagesearch.xml
+.idea/workspace.xml
+/core/build/
+/filesystemdataaccess/build/
+/console/build/
