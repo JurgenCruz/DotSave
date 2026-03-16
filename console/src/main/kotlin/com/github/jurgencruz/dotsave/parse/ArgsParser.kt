@@ -17,6 +17,8 @@ class ArgsParser {
     private const val BACKUP_LONG = "--back-up"
     private const val RESTORE_SHORT = "-r"
     private const val RESTORE_LONG = "--restore"
+    private const val PROFILE_SHORT = "-p"
+    private const val PROFILE_LONG = "--profile"
   }
 
   /**
@@ -28,27 +30,35 @@ class ArgsParser {
     var verbose = false
     var action = Action.USAGE
     var path = ""
+    var profile: String? = null
     var i = 0
     while (i < args.size) {
       val arg = args[i]
       ++i
-      if (shouldShowUsage(arg)) {
-        action = Action.USAGE
-        break
-      }
-      if (shouldShowVersion(arg)) {
-        action = Action.VERSION
-        break
-      }
-      if (isVerbose(arg)) {
-        verbose = true
-        continue
-      }
-      if (action != Action.USAGE) {
-        return Result.failure(Exception("You can only specify one action"))
-      }
+
       when {
-        isSave(arg)  -> {
+        shouldShowUsage(arg)   -> {
+          if (action != Action.USAGE) {
+            return Result.failure(Exception("You can only specify one action"))
+          }
+          return Result.success(ArgsParseResult(Action.USAGE, "", false, null))
+        }
+
+        shouldShowVersion(arg) -> {
+          if (action != Action.USAGE) {
+            return Result.failure(Exception("You can only specify one action"))
+          }
+          return Result.success(ArgsParseResult(Action.VERSION, "", false, null))
+        }
+
+        isVerbose(arg)         -> {
+          verbose = true
+        }
+
+        isSave(arg)            -> {
+          if (action != Action.USAGE) {
+            return Result.failure(Exception("You can only specify one action"))
+          }
           action = Action.BACKUP
           if (i >= args.size) {
             return Result.failure(Exception("No path specified for saving"))
@@ -57,19 +67,30 @@ class ArgsParser {
           ++i
         }
 
-        isApply(arg) -> {
+        isApply(arg)           -> {
+          if (action != Action.USAGE) {
+            return Result.failure(Exception("You can only specify one action"))
+          }
           action = Action.RESTORE
           if (i >= args.size) {
-            return Result.failure(Exception("No path specified for applying"))
+            return Result.failure(Exception("No path specified for restoring"))
           }
           path = args[i]
           ++i
         }
 
-        else         -> return Result.failure(Exception("Unrecognized argument: $arg"))
+        isProfileName(arg)     -> {
+          if (i >= args.size) {
+            return Result.failure(Exception("No profile name specified"))
+          }
+          profile = args[i]
+          ++i
+        }
+
+        else                   -> return Result.failure(Exception("Unrecognized argument: $arg"))
       }
     }
-    return Result.success(ArgsParseResult(action, path, verbose))
+    return Result.success(ArgsParseResult(action, path, verbose, profile))
   }
 
   private fun shouldShowUsage(arg: String): Boolean = arg == HELP_SHORT || arg == HELP_LONG
@@ -77,4 +98,5 @@ class ArgsParser {
   private fun isVerbose(arg: String): Boolean = arg == VERBOSE_SHORT || arg == VERBOSE_LONG
   private fun isSave(arg: String): Boolean = arg == BACKUP_SHORT || arg == BACKUP_LONG
   private fun isApply(arg: String): Boolean = arg == RESTORE_SHORT || arg == RESTORE_LONG
+  private fun isProfileName(arg: String): Boolean = arg == PROFILE_SHORT || arg == PROFILE_LONG
 }

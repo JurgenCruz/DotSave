@@ -74,6 +74,7 @@ object Application {
     println("    -b, --back-up <filepath> Back up the files according to the config file.")
     println("    -r, --restore <filepath> Restore the files according to the config file.")
     println("    -v, --verbose            Print extra information.")
+    println("    -p, --profile            Select which profile to execute.")
   }
 
   private fun printVersion() {
