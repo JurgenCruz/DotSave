@@ -29,7 +29,7 @@ class RestoreHandler(fileSystem: FileSystem, logger: Logger) {
     val backupPath = Path(configFilePath).parent!!
     return config.profiles.asSequence().onEach {
       mLogger.log("Restoring profile: ${it.name}")
-    }.flatMap { (name, root, include) ->
+    }.flatMap { (name, _, root, _, _, include) ->
       include.asSequence().map { f ->
         toSafePath(root, f) to runCatching { backupPath.resolve(name).resolve(f) }
       }

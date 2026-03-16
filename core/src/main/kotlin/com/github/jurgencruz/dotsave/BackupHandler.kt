@@ -40,7 +40,7 @@ class BackupHandler(fileSystem: FileSystem, logger: Logger) {
       it.getOrNull()!!
     }.onEach {
       mLogger.log("Backing up profile: ${it.name}")
-    }.flatMap { (name, root, include): Profile ->
+    }.flatMap { (name, _, root, _, _, include): Profile ->
       include.asSequence().map { f ->
         toSafePath(root, f) to runCatching { backupPath.resolve(name).resolve(f) }
       }.map { (f, profileBackupPath) ->
