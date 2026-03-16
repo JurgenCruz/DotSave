@@ -36,7 +36,7 @@ class BackupHandlerTest {
   fun backupShouldCopyFilesToCorrectDestination() {
     whenever(mFileSystem.recreateDir(any())).thenReturn(Result.success(Unit))
     whenever(mFileSystem.copy(any(), any())).thenReturn(Result.success(Unit))
-    val config = Config(listOf(Profile("program1", "root1", listOf("file1", "folder2")), Profile("program2", "root2", listOf("file3", "folder4"))))
+    val config = Config(listOf(Profile("program1", false, "root1", emptyList(), emptyList(), listOf("file1", "folder2"), emptyList()), Profile("program2", false, "root2", emptyList(), emptyList(), listOf("file3", "folder4"), emptyList())))
     val result = mTarget.backup(config, "backup/dotsave.json")
     assertThat(result.isSuccess).isTrue()
     val srcCaptor = argumentCaptor<Path>()
@@ -53,7 +53,7 @@ class BackupHandlerTest {
   @Test
   fun backupShouldFailIfCannotCreateDestinationDir() {
     whenever(mFileSystem.recreateDir(any())).thenReturn(Result.failure(IllegalAccessException("test")))
-    val config = Config(listOf(Profile("test1", "root1", listOf("file1", "folder1"))))
+    val config = Config(listOf(Profile("test1", false, "root1", emptyList(), emptyList(), listOf("file1", "folder1"), emptyList())))
     val result = mTarget.backup(config, "backup/dotsave.json")
     assertThat(result.isFailure).isTrue()
     assertThat(result.exceptionOrNull()).hasMessage("test")
@@ -63,7 +63,7 @@ class BackupHandlerTest {
   fun backupShouldFailIfCannotCopyAFile() {
     whenever(mFileSystem.recreateDir(any())).thenReturn(Result.success(Unit))
     whenever(mFileSystem.copy(any(), any())).thenReturn(Result.failure(IllegalAccessException("test")))
-    val config = Config(listOf(Profile("program1", "root1", listOf("file1", "folder2")), Profile("program2", "root2", listOf("file3", "folder4"))))
+    val config = Config(listOf(Profile("program1", false, "root1", emptyList(), emptyList(), listOf("file1", "folder2"), emptyList()), Profile("program2", false, "root2", emptyList(), emptyList(), listOf("file3", "folder4"), emptyList())))
     val result = mTarget.backup(config, "backup/dotsave.json")
     assertThat(result.isFailure).isTrue()
     assertThat(result.exceptionOrNull()).hasMessage("test")
@@ -73,7 +73,7 @@ class BackupHandlerTest {
   fun backupShouldAggregateErrorsAndContinue() {
     whenever(mFileSystem.recreateDir(any())).thenReturn(Result.success(Unit))
     whenever(mFileSystem.copy(any(), any())).thenReturn(Result.failure(IllegalAccessException("test1")), Result.failure(IllegalAccessException("test2")), Result.failure(IllegalAccessException("test3")), Result.failure(IllegalAccessException("test4")))
-    val config = Config(listOf(Profile("program1", "root1", listOf("file1", "folder2")), Profile("program2", "root2", listOf("file3", "folder4"))))
+    val config = Config(listOf(Profile("program1", false, "root1", emptyList(), emptyList(), listOf("file1", "folder2"), emptyList()), Profile("program2", false, "root2", emptyList(), emptyList(), listOf("file3", "folder4"), emptyList())))
     val result = mTarget.backup(config, "backup/dotsave.json")
     assertThat(result.isFailure).isTrue()
     val exception = result.exceptionOrNull()

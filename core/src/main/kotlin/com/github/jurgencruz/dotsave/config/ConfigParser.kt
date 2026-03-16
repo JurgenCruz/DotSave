@@ -21,30 +21,26 @@ class ConfigParser(fileSystem: FileSystem, envVarReplacer: EnvVarReplacer) {
    * @param path The path of the configuration file and the directory where to do the backup to or restore from.
    * @return A result object with the config object if successful or exception if error.
    */
-  fun parse(path: String): Result<Config> {
-    return toSafePath(path).flatMap(mFileSystem::read).mapCatching<Config, String>(Default::decodeFromString).flatMap(::replaceEnvVar).flatMap { config ->
-      if (config.profiles.distinctBy(Profile::name).size != config.profiles.size) {
-        Result.failure(IllegalStateException("Config cannot contain two profiles with the same name"))
-      } else {
-        Result.success(config)
-      }
-    }
+  fun parse(path: String) = toSafePath(path).flatMap(mFileSystem::read).mapCatching<Config, String>(Default::decodeFromString).flatMap(::replaceEnvVars).flatMap(::validateConfig)
+  private fun validateConfig(config: Config): Result<Config> = when {
+    config.profiles.distinctBy(Profile::name).size != config.profiles.size -> Result.failure(IllegalStateException("Config cannot contain two profiles with the same name"))
+    config.profiles.count { it.default } > 1                               -> Result.failure(IllegalArgumentException("Config cannot contain more than one default profile"))
+    config.profiles.any { it.name.isBlank() }                              -> Result.failure(IllegalArgumentException("Profile names cannot be blank. If using Env Vars, make sure they have valid values"))
+    else                                                                   -> Result.success(config)
   }
 
-  private fun replaceEnvVar(config: Config): Result<Config> {
-    return config.profiles.asSequence().map { profile ->
-      mEnvVarReplacer.replace(profile.name).onSuccess {
-        profile.name = it
-      }.flatMap {
-        mEnvVarReplacer.replace(profile.root)
-      }.onSuccess {
-        profile.root = it
-      }.flatMap {
-        val newInclude = mutableListOf<String>()
-        (profile.include.asSequence().map(mEnvVarReplacer::replace).onEach {
-          it.onSuccess(newInclude::add)
-        }.firstOrNull(Result<String>::isFailure)?.map { } ?: Result.success(Unit)).onSuccess { profile.include = newInclude }
-      }
-    }.mergeFailures().map { config }
+  private fun replaceEnvVars(config: Config) = config.profiles.asSequence().map(::replaceEnvVars).mergeFailures().map { config.copy(profiles = it) }
+  private fun replaceEnvVars(profile: Profile) = mEnvVarReplacer.replace(profile.name).map { profile.copy(name = it.trim()) }.flatMap { p ->
+    mEnvVarReplacer.replace(p.root).map { p.copy(root = it) }
+  }.flatMap { p ->
+    replaceEnvVars(p.includeProfiles).map { p.copy(includeProfiles = it) }
+  }.flatMap { p ->
+    replaceEnvVars(p.inheritProfiles).map { p.copy(inheritProfiles = it) }
+  }.flatMap { p ->
+    replaceEnvVars(p.include).map { p.copy(include = it) }
+  }.flatMap { p ->
+    replaceEnvVars(p.exclude).map { p.copy(exclude = it) }
   }
+
+  private fun replaceEnvVars(list: List<String>) = list.asSequence().map(mEnvVarReplacer::replaceMandatory).mergeFailures()
 }

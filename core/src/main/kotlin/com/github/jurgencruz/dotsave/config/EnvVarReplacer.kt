@@ -1,5 +1,7 @@
 package com.github.jurgencruz.dotsave.config
 
+import com.github.jurgencruz.dotsave.utils.flatMap
+
 /**
  * Helper to replace environment variables in a string.
  * @constructor Create a new helper.
@@ -22,6 +24,14 @@ open class EnvVarReplacer {
       regex.replace(string) { m ->
         m.groups["name"]!!.value.replace("{", "").replace("}", "").let(::getEnv)
       }
+    }
+  }
+
+  open fun replaceMandatory(string: String) = replace(string).map(String::trim).flatMap {
+    if (it.isBlank()) {
+      Result.failure(IllegalStateException("Value cannot be blank"))
+    } else {
+      Result.success(it)
     }
   }
 

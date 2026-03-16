@@ -26,13 +26,25 @@ fun toSafePath(base: String, vararg subPaths: String): Result<Path> = runCatchin
 /**
  * Helper that reduces a sequence of Results into a single Result to signal a success or failure of the entire operation.
  * If multiple errors, they will be merged using the "suppressed" exception making a chain.
- * @return A single Result signaling success or failure of the entire operation.
+ * @return A single Result with the list of values signaling success or failure of the entire operation.
  */
-fun <T> Sequence<Result<T>>.mergeFailures(): Result<Unit> {
-  return this.filter(Result<T>::isFailure).reduceOrNull { l, r ->
-    if (l != r) {
-      l.exceptionOrNull()!!.addSuppressed(r.exceptionOrNull())
-    }
-    l
-  }?.map { } ?: Result.success(Unit)
+fun <T> Sequence<Result<T>>.mergeFailures(): Result<List<T>> {
+  val resultList = mutableListOf<T>()
+  var error: Throwable? = null
+  forEach {
+    it.fold({
+      resultList.add(it)
+    }, {
+      if (error == null) {
+        error = it
+      } else {
+        error.addSuppressed(it)
+      }
+    })
+  }
+  return if (error != null) {
+    Result.failure(error)
+  } else {
+    Result.success(resultList)
+  }
 }

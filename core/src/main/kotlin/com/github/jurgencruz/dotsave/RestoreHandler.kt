@@ -40,6 +40,6 @@ class RestoreHandler(fileSystem: FileSystem, logger: Logger) {
           mFileSystem.copy(filePath, rootPath)
         }
       }
-    }.mergeFailures()
+    }.mergeFailures().map { }
   }
 }

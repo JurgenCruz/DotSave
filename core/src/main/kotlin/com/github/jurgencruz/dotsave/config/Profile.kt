@@ -14,4 +14,4 @@ import kotlinx.serialization.Serializable
  * @param exclude List of files and directories to exclude in the backup. Used mainly to disable warnings about files not being backed up.
  */
 @Serializable
-data class Profile(var name: String, var default: Boolean, var root: String, var includeProfiles: List<String>, var inheritProfiles: List<String>, var include: List<String>, var exclude: List<String>)
+data class Profile(val name: String, val default: Boolean, val root: String, val includeProfiles: List<String>, val inheritProfiles: List<String>, val include: List<String>, val exclude: List<String>)

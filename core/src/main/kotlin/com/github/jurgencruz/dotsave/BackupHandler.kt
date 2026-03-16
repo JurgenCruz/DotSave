@@ -52,6 +52,6 @@ class BackupHandler(fileSystem: FileSystem, logger: Logger) {
         }
       }
     }
-    return profiles.getOrElse(false, ::emptyList).asSequence().map { it.map { } }.plus(files).mergeFailures()
+    return profiles.getOrElse(false, ::emptyList).asSequence().map { it.map { } }.plus(files).mergeFailures().map { }
   }
 }

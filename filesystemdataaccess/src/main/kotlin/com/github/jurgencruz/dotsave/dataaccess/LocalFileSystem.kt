@@ -54,7 +54,7 @@ class LocalFileSystem : FileSystem {
       }.flatMap { files ->
         files.asSequence().drop(1).map { srcFile ->
           copy(srcFile, destPath.resolve(srcFile.name))
-        }.mergeFailures()
+        }.mergeFailures().map { }
       }
     }
   }
