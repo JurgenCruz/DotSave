@@ -1,5 +1,6 @@
 package com.github.jurgencruz.dotsave.utils
 
+import kotlinx.serialization.json.Json
 import java.nio.file.Path
 import kotlin.io.path.Path
 
@@ -48,3 +49,5 @@ fun <T> Sequence<Result<T>>.mergeFailures(): Result<List<T>> {
     Result.success(resultList)
   }
 }
+
+inline fun <reified T> deserialize(string: String): T = Json.decodeFromString<T>(string)

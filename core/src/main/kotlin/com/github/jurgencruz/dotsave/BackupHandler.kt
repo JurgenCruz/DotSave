@@ -2,36 +2,34 @@ package com.github.jurgencruz.dotsave
 
 import com.github.jurgencruz.dotsave.config.Config
 import com.github.jurgencruz.dotsave.config.Profile
-import com.github.jurgencruz.dotsave.dataaccess.FileSystem
-import com.github.jurgencruz.dotsave.logging.Logger
+import com.github.jurgencruz.dotsave.logging.LogLevel
 import com.github.jurgencruz.dotsave.utils.flatMap
 import com.github.jurgencruz.dotsave.utils.mergeFailures
 import com.github.jurgencruz.dotsave.utils.toSafePath
+import java.nio.file.Path
 import kotlin.io.path.Path
 
 /**
  * Handler for the backup process.
- * @constructor Create a new handler.
- * @param fileSystem The file system layer.
- * @param logger The logger.
  */
 @Suppress("HardCodedStringLiteral")
-class BackupHandler(fileSystem: FileSystem, logger: Logger) {
-  private val mFileSystem = fileSystem
-  private val mLogger = logger
-
+object BackupHandler {
   /**
    * Backup files based on the configuration on the specified path.
    * @param config The backup configuration.
    * @param configFilePath The path of the config file and directory to back up to.
+   * @param profileName The profile to execute.
+   * @param log The logger function.
+   * @param recreateDir function that deletes and creates a directory again.
+   * @param copy function to copy a file from path a to path b.
    * @return A result object to signal if there were any errors.
    */
-  fun backup(config: Config, configFilePath: String): Result<Unit> {
+  fun backup(config: Config, configFilePath: String, profileName: String?, log: (LogLevel, String) -> Unit, recreateDir: (Path) -> Result<Unit>, copy: (Path, Path) -> Result<Unit>): Result<Unit> {
     val backupPath = Path(configFilePath).parent!!
     val profiles = config.profiles.map { profile ->
       runCatching { backupPath.resolve(profile.name) }.flatMap { profileBackupPath ->
-        mLogger.log("Recreating directory: $profileBackupPath")
-        mFileSystem.recreateDir(profileBackupPath)
+        log(LogLevel.INFO, "Recreating directory: $profileBackupPath")
+        recreateDir(profileBackupPath)
       }.map {
         profile
       }
@@ -39,15 +37,15 @@ class BackupHandler(fileSystem: FileSystem, logger: Logger) {
     val files = profiles.getOrElse(true, ::emptyList).asSequence().map {
       it.getOrNull()!!
     }.onEach {
-      mLogger.log("Backing up profile: ${it.name}")
+      log(LogLevel.INFO, "Backing up profile: ${it.name}")
     }.flatMap { (name, _, root, _, _, include): Profile ->
       include.asSequence().map { f ->
         toSafePath(root, f) to runCatching { backupPath.resolve(name).resolve(f) }
       }.map { (f, profileBackupPath) ->
         f.flatMap { filePath ->
           profileBackupPath.flatMap { profileBackupPath ->
-            mLogger.log("Copying '$filePath' to '$profileBackupPath'")
-            mFileSystem.copy(filePath, profileBackupPath)
+            log(LogLevel.INFO, "Copying '$filePath' to '$profileBackupPath'")
+            copy(filePath, profileBackupPath)
           }
         }
       }

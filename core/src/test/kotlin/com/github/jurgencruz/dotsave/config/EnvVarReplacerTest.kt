@@ -1,44 +1,117 @@
 package com.github.jurgencruz.dotsave.config
 
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.junit.jupiter.MockitoExtension
 
-@ExtendWith(MockitoExtension::class)
 class EnvVarReplacerTest {
-  private lateinit var mTarget: MockEnvVarReplacer
+  companion object {
+    @JvmStatic
+    @BeforeAll
+    fun setup() {
+      EnvVarReplacer.getEnv = ::mockGetEnv
+    }
 
-  @BeforeEach
-  fun setup() {
-    mTarget = MockEnvVarReplacer()
-  }
-
-  @Test
-  fun replaceShouldReplaceEnvVar() {
-    var result = mTarget.replace("/\$HOME/")
-    assertThat(result.isSuccess).isTrue()
-    assertThat(result.getOrThrow()).isEqualTo("/(replaced-HOME)/")
-    result = mTarget.replace("/\${NAME_WITH_1_NUMBER}asdf/")
-    assertThat(result.isSuccess).isTrue()
-    assertThat(result.getOrThrow()).isEqualTo("/(replaced-NAME_WITH_1_NUMBER)asdf/")
-  }
-
-  @Test
-  fun replaceShouldReturnErrorIfSystemThrowsException() {
-    val result = mTarget.replace("/\$exception/")
-    assertThat(result.isFailure).isTrue()
-    assertThat(result.exceptionOrNull()).hasMessage("fail")
-  }
-
-  class MockEnvVarReplacer : EnvVarReplacer() {
-    override fun getEnv(varName: String): String {
+    fun mockGetEnv(varName: String): String {
       return if (varName == "exception") {
         throw SecurityException("fail")
       } else {
         "(replaced-$varName)"
       }
+    }
+  }
+  @Test
+  fun replaceEnvVarsShouldReplaceEnvVarInName() {
+    val config = Config(listOf(Profile($$"${name1}s", false, "root", emptyList(), emptyList(), emptyList(), emptyList())))
+    val result = EnvVarReplacer.replaceEnvVars(config)
+    assertThat(result.exceptionOrNull()).isNull()
+    assertThat(result.getOrThrow().profiles[0].name).isEqualTo("(replaced-name1)s")
+  }
+  @Test
+  fun replaceEnvVarsShouldReturnErrorIfInvalidName() {
+    val config = Config(listOf(Profile($$"${exception}s", false, "root", emptyList(), emptyList(), emptyList(), emptyList())))
+    val result = EnvVarReplacer.replaceEnvVars(config)
+    assertThat(result.exceptionOrNull()).hasMessage("fail")
+  }
+  @Test
+  fun replaceEnvVarsShouldReplaceEnvVarInRoot() {
+    val config = Config(listOf(Profile("name", false, $$"${root1}s", emptyList(), emptyList(), emptyList(), emptyList())))
+    val result = EnvVarReplacer.replaceEnvVars(config)
+    assertThat(result.exceptionOrNull()).isNull()
+    assertThat(result.getOrThrow().profiles[0].root).isEqualTo("(replaced-root1)s")
+  }
+  @Test
+  fun replaceEnvVarsShouldReturnErrorIfInvalidRoot() {
+    val config = Config(listOf(Profile("name", false, $$"${exception}s", emptyList(), emptyList(), emptyList(), emptyList())))
+    val result = EnvVarReplacer.replaceEnvVars(config)
+    assertThat(result.exceptionOrNull()).hasMessage("fail")
+  }
+  @Test
+  fun replaceEnvVarsShouldReplaceEnvVarInIncludeProfiles() {
+    val config = Config(listOf(Profile("name", false, "root", listOf($$"${include1}s", $$"${include2}s"), emptyList(), emptyList(), emptyList())))
+    val result = EnvVarReplacer.replaceEnvVars(config)
+    assertThat(result.exceptionOrNull()).isNull()
+    assertThat(result.getOrThrow().profiles[0].includeProfiles).containsExactly("(replaced-include1)s", "(replaced-include2)s")
+  }
+  @Test
+  fun replaceEnvVarsShouldReturnErrorIfInvalidIncludeProfiles() {
+    val config = Config(listOf(Profile("name", false, "root", listOf($$"${exception}s", $$"${exception}s", $$"${exception}s"), emptyList(), emptyList(), emptyList())))
+    val result = EnvVarReplacer.replaceEnvVars(config)
+    val exception = result.exceptionOrNull()
+    assertThat(exception).hasMessage("fail")
+    assertThat(exception!!.suppressed).zipSatisfy(arrayOf("fail", "fail")) { a, b ->
+      assertThat(a).hasMessage(b)
+    }
+  }
+  @Test
+  fun replaceEnvVarsShouldReplaceEnvVarInInheritProfiles() {
+    val config = Config(listOf(Profile("name", false, "root", emptyList(), listOf($$"${inherit1}s", $$"${inherit2}s"), emptyList(), emptyList())))
+    val result = EnvVarReplacer.replaceEnvVars(config)
+    assertThat(result.exceptionOrNull()).isNull()
+    assertThat(result.getOrThrow().profiles[0].inheritProfiles).containsExactly("(replaced-inherit1)s", "(replaced-inherit2)s")
+  }
+  @Test
+  fun replaceEnvVarsShouldReturnErrorIfInvalidInheritProfiles() {
+    val config = Config(listOf(Profile("name", false, "root", emptyList(), listOf($$"${exception}s", $$"${exception}s", $$"${exception}s"), emptyList(), emptyList())))
+    val result = EnvVarReplacer.replaceEnvVars(config)
+    val exception = result.exceptionOrNull()
+    assertThat(exception).hasMessage("fail")
+    assertThat(exception!!.suppressed).zipSatisfy(arrayOf("fail", "fail")) { a, b ->
+      assertThat(a).hasMessage(b)
+    }
+  }
+  @Test
+  fun replaceEnvVarsShouldReplaceEnvVarInInclude() {
+    val config = Config(listOf(Profile("name", false, "root", emptyList(), emptyList(), listOf($$"${include1}s", $$"${include2}s"), emptyList())))
+    val result = EnvVarReplacer.replaceEnvVars(config)
+    assertThat(result.exceptionOrNull()).isNull()
+    assertThat(result.getOrThrow().profiles[0].include).containsExactly("(replaced-include1)s", "(replaced-include2)s")
+  }
+  @Test
+  fun replaceEnvVarsShouldReturnErrorIfInvalidInclude() {
+    val config = Config(listOf(Profile("name", false, "root", emptyList(), emptyList(), listOf($$"${exception}s", $$"${exception}s", $$"${exception}s"), emptyList())))
+    val result = EnvVarReplacer.replaceEnvVars(config)
+    val exception = result.exceptionOrNull()
+    assertThat(exception).hasMessage("fail")
+    assertThat(exception!!.suppressed).zipSatisfy(arrayOf("fail", "fail")) { a, b ->
+      assertThat(a).hasMessage(b)
+    }
+  }
+  @Test
+  fun replaceEnvVarsShouldReplaceEnvVarInExclude() {
+    val config = Config(listOf(Profile("name", false, "root", emptyList(), emptyList(), emptyList(), listOf($$"${exclude1}s", $$"${exclude2}s"))))
+    val result = EnvVarReplacer.replaceEnvVars(config)
+    assertThat(result.exceptionOrNull()).isNull()
+    assertThat(result.getOrThrow().profiles[0].exclude).containsExactly("(replaced-exclude1)s", "(replaced-exclude2)s")
+  }
+  @Test
+  fun replaceEnvVarsShouldReturnErrorIfInvalidExclude() {
+    val config = Config(listOf(Profile("name", false, "root", emptyList(), emptyList(), emptyList(), listOf($$"${exception}s", $$"${exception}s", $$"${exception}s"))))
+    val result = EnvVarReplacer.replaceEnvVars(config)
+    val exception = result.exceptionOrNull()
+    assertThat(exception).hasMessage("fail")
+    assertThat(exception!!.suppressed).zipSatisfy(arrayOf("fail", "fail")) { a, b ->
+      assertThat(a).hasMessage(b)
     }
   }
 }

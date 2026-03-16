@@ -2,25 +2,21 @@ package com.github.jurgencruz.dotsave.parse
 
 /**
  * The parser for the console arguments.
- * @constructor Create a new Argument Parser.
  */
 @Suppress("HardCodedStringLiteral")
-class ArgsParser {
-  companion object {
-    private const val HELP_SHORT = "-h"
-    private const val HELP_LONG = "--help"
-    private const val VERSION_SHORT = "-V"
-    private const val VERSION_LONG = "--version"
-    private const val VERBOSE_SHORT = "-v"
-    private const val VERBOSE_LONG = "--verbose"
-    private const val BACKUP_SHORT = "-b"
-    private const val BACKUP_LONG = "--back-up"
-    private const val RESTORE_SHORT = "-r"
-    private const val RESTORE_LONG = "--restore"
-    private const val PROFILE_SHORT = "-p"
-    private const val PROFILE_LONG = "--profile"
-  }
-
+object ArgsParser {
+  private const val HELP_SHORT = "-h"
+  private const val HELP_LONG = "--help"
+  private const val VERSION_SHORT = "-V"
+  private const val VERSION_LONG = "--version"
+  private const val VERBOSE_SHORT = "-v"
+  private const val VERBOSE_LONG = "--verbose"
+  private const val BACKUP_SHORT = "-b"
+  private const val BACKUP_LONG = "--back-up"
+  private const val RESTORE_SHORT = "-r"
+  private const val RESTORE_LONG = "--restore"
+  private const val PROFILE_SHORT = "-p"
+  private const val PROFILE_LONG = "--profile"
   /**
    * Parse the console arguments.
    * @param args The console arguments to parse.
