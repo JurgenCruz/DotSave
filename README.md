@@ -74,52 +74,95 @@ DotSave requires the JRE to be installed in your system to work. Check with your
 
 ### Nested profiles
 
-Sometimes you may have multiple devices which you want to share certain configuration between them, but not all. You can add more profiles to the config file and assign a `parent` profile instead of specifying a `root` directory. For example:
+Sometimes you may have multiple devices which you want to share certain configuration between them, but not all. You can add more profiles to the config file and compose a profile from other using `includeProfiles` and `inheritProfiles`. For example:
 
 ```json
 {
   "profiles": [
     {
-      "name": "Home Base",
-      "root": "$HOME",
+      "name": "Neofetch",
+      "root": "$HOME/.config/neofetch",
       "include": [
-        ".config/neofetch/config.conf"
+        "config.conf"
       ],
-      "exclude": [
-        ".npm/"
-      ]
+      "exclude": []
+    },
+    {
+      "name": "FreeCAD",
+      "root": "$HOME/.config/FreeCAD",
+      "include": [
+        "FreeCAD.conf",
+        "system.cfg",
+        "user.cfg"
+      ],
+      "exclude": []
+    },
+    {
+      "name": "BatteryMonitor",
+      "root": "$HOME/.config/BatteryMonitor",
+      "include": [
+        "config.conf"
+      ],
+      "exclude": []
+    },
+    {
+      "name": "KDE",
+      "root": "$HOME/.config",
+      "include": [
+        "kde.org/*"
+      ],
+      "exclude": []
+    },
+    {
+      "name": "Shared",
+      "root": "$HOME",
+      "inheritProfiles": [
+        "Neofetch"
+      ],
+      "include": [],
+      "exclude": []
     },
     {
       "name": "Desktop",
       "default": true,
-      "parent": "Home Base",
-      "include": [
-        ".config/audacious/config.conf"
+      "root": "$HOME",
+      "includeProfiles": [
+        "Shared"
       ],
+      "inheritProfiles": [
+        "FreeCAD",
+        "KDE"
+      ],
+      "include": [],
       "exclude": [
         ".gradle/"
       ]
     },
     {
       "name": "Laptop",
-      "parent": "Home Base",
-      "include": [
-        ".config/audacious/config.conf"
+      "root": "$HOME",
+      "includeProfiles": [
+        "Shared"
       ],
-      "exclude": [
-        ".gradle/"
-      ]
+      "inheritProfiles": [
+        "BatteryMonitor",
+        "KDE"
+      ],
+      "include": [],
+      "exclude": []
     }
   ]
 }
 ```
 
-And run with `dotsave -b ~/my-backup/home.json -p Desktop`.
+Let's assume we run the `Desktop` profile with `dotsave -b ~/my-backup/home.json -p Desktop`:
 
-The `Desktop` profile will then first run the parent profile and then run itself. For the purposes of missing files detection, the include and exclude lists will be merged. This means that it is valid that the parent profile has missing files if run by itself if you plan to cover those files in the child profile.
+1. `Desktop` profile will first execute the profiles in the `includeProfiles` list, in this case `Shared`. So we will end with a directory `~/my-backup/Shared`.
+2. `Shared` profile doesn't have any `includeProfiles` so it will skip that step. Instead, it will merge in itself all the profiles in `inheritProfiles`, in this case `Neofetch`. so we will have a file backed up at `~/my-backup/Shared/.config/neofetch/config.conf`. Notice there is no top level "Neofetch" directory, is it inside "Shared".
+3. After executing `Shared`, `Desktop` will merge the profiles in `inheritProfiles` which are `FreeCAD` and `KDE`. So a `~/my-backup/Desktop/` directory will be created and back up the files like `~/my-backup/Desktop/.config/FreeCAD/FreeCAD.conf` and `~/my-backup/Desktop/.config/kde.org/plasmashell.conf`.
 
 > [!NOTE]
-> Note that both `Desktop` and `Laptop` profiles are the same, but the backups will be stored in different directories, so the contents of the files can be different.
+> Note that both `Desktop` and `Laptop` profiles **inherit** `KDE`, but the KDE backups will be stored in different directories, so the contents of the files can be different. Likewise, both of them **include** `Shared`, which will be stored in the same `Shared` directory and thus shared between the two profiles.
 
 > [!IMPORTANT]
 > You can mark a profile as the default with the `default` property so you don't need to specify the profile name in the command line. Only **one** profile can be marked as default.

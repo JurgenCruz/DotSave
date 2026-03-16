@@ -12,7 +12,7 @@ import kotlin.io.path.Path
  * Handler for the restore process.
  * @constructor Create a new handler.
  * @param fileSystem The file system layer.
- * @param logger Th logger.
+ * @param logger The logger.
  */
 @Suppress("HardCodedStringLiteral")
 class RestoreHandler(fileSystem: FileSystem, logger: Logger) {

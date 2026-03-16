@@ -13,7 +13,7 @@ import kotlin.io.path.Path
  * Handler for the backup process.
  * @constructor Create a new handler.
  * @param fileSystem The file system layer.
- * @param logger Th logger.
+ * @param logger The logger.
  */
 @Suppress("HardCodedStringLiteral")
 class BackupHandler(fileSystem: FileSystem, logger: Logger) {

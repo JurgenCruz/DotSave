@@ -74,52 +74,95 @@ DotSave requiere que el JRE esté instalado en su sistema para funcionar. Consul
 
 ### Perfiles anidados
 
-A veces uno puede tener multiples dispositivos que quiere compartan cierta configuración entre ellos, pero no toda. Puede agregar más perfiles al archivo de configuración y asignar un perfil padre con `parent` en vez de especificar un directorio raíz con `root`. Por ejemplo:
+A veces uno puede tener multiples dispositivos que quiere compartan cierta configuración entre ellos, pero no toda. Puede agregar más perfiles al archivo de configuración y componer un perfil a partir de otros con `includeProfiles` y `inheritProfiles`. Por ejemplo:
 
 ```json
 {
   "profiles": [
     {
-      "name": "Home Base",
-      "root": "$HOME",
+      "name": "Neofetch",
+      "root": "$HOME/.config/neofetch",
       "include": [
-        ".config/neofetch/config.conf"
+        "config.conf"
       ],
-      "exclude": [
-        ".npm/"
-      ]
+      "exclude": []
+    },
+    {
+      "name": "FreeCAD",
+      "root": "$HOME/.config/FreeCAD",
+      "include": [
+        "FreeCAD.conf",
+        "system.cfg",
+        "user.cfg"
+      ],
+      "exclude": []
+    },
+    {
+      "name": "BatteryMonitor",
+      "root": "$HOME/.config/BatteryMonitor",
+      "include": [
+        "config.conf"
+      ],
+      "exclude": []
+    },
+    {
+      "name": "KDE",
+      "root": "$HOME/.config",
+      "include": [
+        "kde.org/*"
+      ],
+      "exclude": []
+    },
+    {
+      "name": "Shared",
+      "root": "$HOME",
+      "inheritProfiles": [
+        "Neofetch"
+      ],
+      "include": [],
+      "exclude": []
     },
     {
       "name": "Desktop",
       "default": true,
-      "parent": "Home Base",
-      "include": [
-        ".config/audacious/config.conf"
+      "root": "$HOME",
+      "includeProfiles": [
+        "Shared"
       ],
+      "inheritProfiles": [
+        "FreeCAD",
+        "KDE"
+      ],
+      "include": [],
       "exclude": [
         ".gradle/"
       ]
     },
     {
       "name": "Laptop",
-      "parent": "Home Base",
-      "include": [
-        ".config/audacious/config.conf"
+      "root": "$HOME",
+      "includeProfiles": [
+        "Shared"
       ],
-      "exclude": [
-        ".gradle/"
-      ]
+      "inheritProfiles": [
+        "BatteryMonitor",
+        "KDE"
+      ],
+      "include": [],
+      "exclude": []
     }
   ]
 }
 ```
 
-Y ejecute con `dotsave -b ~/my-backup/home.json -p Desktop`.
+Asumiendo que ejecutamos el perfil `Desktop` con `dotsave -b ~/my-backup/home.json -p Desktop`:
 
-El perfil `Desktop` entonces ejecutará primero el perfil padre y luego el mismo. Para los propósitos de detección de archivos faltantes, las listas de inclusión y exclusión serán fusionadas. Esto significa que es valido que el perfil padre tenga archivos faltantes si se ejecuta solo si piensa cubrir estos archivos en el perfil hijo.
+1. El perfil `Desktop` va a ejecutar primero los perfiles en la lista `includeProfiles`, en este caso `Shared`. Por lo que tendremos un directorio `~/my-backup/Shared`.
+2. El perfil `Shared` no tiene nada en `includeProfiles` así que se brincará este paso. En vez de eso, va a fusionar consigo mismo los perfiles en `inheritProfiles`, en este caso `Neofetch`. Así que tendremos un archivo respaldado en `~/my-backup/Shared/.config/neofetch/config.conf`. Note que no hay un directorio superior de "Neofetch", sino que está adentro de "Shared".
+3. Después de ejecutar `Shared`, `Desktop` va a fusionar los perfiles en `inheritProfiles` que son `FreeCAD` y `KDE`. asi que se creará un directorio `~/my-backup/Desktop` y se respaldarán archivos como `~/my-backup/Desktop/.config/FreeCAD/FreeCAD.conf` y `~/my-backup/Desktop/.config/kde.org/plasmashell.conf`.
 
 > [!NOTE]
-> Note que ambos perfiles `Desktop` y `Laptop` son iguales, pero los respaldos serán guardados en diferentes directorios, asi que los contenidos de los archivos pueden ser diferentes.
+> Note que ambos perfiles `Desktop` y `Laptop` hacen **inherit** a `KDE`, pero los respaldos de KDE serán guardados en diferentes directorios, asi que los contenidos de los archivos pueden ser diferentes. Igualmente, ambos hacen **include** a `Shared`, que será guardado en el mismo directorio `Shared` y por ende será compartido entre los dos perfiles.
 
 > [!IMPORTANT]
 > Puede marcar un perfil como perfil por defecto con la propiedad `default` para que no tenga que especificar el nombre del perfil en la línea de comandos. Solo **un** perfil puede ser marcado como por defecto.
