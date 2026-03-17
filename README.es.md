@@ -40,7 +40,7 @@ DotSave requiere que el JRE esté instalado en su sistema para funcionar. Consul
        {
          "name": "Home Base",
          "default": true,
-         "root": "$HOME",
+         "root": "${HOME}",
          "include": [
            ".config/neofetch/config.conf"
          ],
@@ -56,6 +56,9 @@ DotSave requiere que el JRE esté instalado en su sistema para funcionar. Consul
 
    > [!WARNING]
    > Si ignora un directorio y más tarde un archivo es agregado a ese directorio, la herramienta no podrá detectar esto. Asegúrese de que no serán agregados archivos o que los archivos agregados nunca serán relevantes.
+
+   > [!NOTE]
+   > Note que la variable de entorno `HOME` fue usada en la propieda `root` del perfil. Durante la ejecución, la variable será evaluada y reemplazada. Puede usar variables de entorno en todas las propiedades de tipo cadena (string) con la notación `${NAME}`.
 
 3. ¡Ahora simplemente ejecute la herramienta con la opción `-b` para respaldar!
 
@@ -81,7 +84,7 @@ A veces uno puede tener multiples dispositivos que quiere compartan cierta confi
   "profiles": [
     {
       "name": "Neofetch",
-      "root": "$HOME/.config/neofetch",
+      "root": "${HOME}/.config/neofetch",
       "include": [
         "config.conf"
       ],
@@ -89,7 +92,7 @@ A veces uno puede tener multiples dispositivos que quiere compartan cierta confi
     },
     {
       "name": "FreeCAD",
-      "root": "$HOME/.config/FreeCAD",
+      "root": "${HOME}/.config/FreeCAD",
       "include": [
         "FreeCAD.conf",
         "system.cfg",
@@ -99,7 +102,7 @@ A veces uno puede tener multiples dispositivos que quiere compartan cierta confi
     },
     {
       "name": "BatteryMonitor",
-      "root": "$HOME/.config/BatteryMonitor",
+      "root": "${HOME}/.config/BatteryMonitor",
       "include": [
         "config.conf"
       ],
@@ -107,7 +110,7 @@ A veces uno puede tener multiples dispositivos que quiere compartan cierta confi
     },
     {
       "name": "KDE",
-      "root": "$HOME/.config",
+      "root": "${HOME}/.config",
       "include": [
         "kde.org/*"
       ],
@@ -115,7 +118,7 @@ A veces uno puede tener multiples dispositivos que quiere compartan cierta confi
     },
     {
       "name": "Shared",
-      "root": "$HOME",
+      "root": "${HOME}",
       "inheritProfiles": [
         "Neofetch"
       ],
@@ -125,7 +128,7 @@ A veces uno puede tener multiples dispositivos que quiere compartan cierta confi
     {
       "name": "Desktop",
       "default": true,
-      "root": "$HOME",
+      "root": "${HOME}",
       "includeProfiles": [
         "Shared"
       ],
@@ -140,7 +143,7 @@ A veces uno puede tener multiples dispositivos que quiere compartan cierta confi
     },
     {
       "name": "Laptop",
-      "root": "$HOME",
+      "root": "${HOME}",
       "includeProfiles": [
         "Shared"
       ],
@@ -169,6 +172,13 @@ Asumiendo que ejecutamos el perfil `Desktop` con `dotsave -b ~/my-backup/home.js
 
 > [!TIP]
 > Puede versionar sus respaldos usando `git` en caso de que quiera regresar a una configuración anterior.
+
+### Otras opciones
+
+Estos son otros argumentos de línea de comandos que puede usar:
+
+- `-v` o `--verbose` - Activa el modo verboso para tener una idea más detallada de lo que la herramienta está haciendo.
+- `-d` o `--dry-run` - Activa el modo simulación donde no se realizarán cambios al sistema de archivos. Muy útil cuando se junta con el modo verboso.
 
 ## Licencia
 

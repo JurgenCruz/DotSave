@@ -40,7 +40,7 @@ DotSave requires the JRE to be installed in your system to work. Check with your
        {
          "name": "Home Base",
          "default": true,
-         "root": "$HOME",
+         "root": "${HOME}",
          "include": [
            ".config/neofetch/config.conf"
          ],
@@ -56,6 +56,9 @@ DotSave requires the JRE to be installed in your system to work. Check with your
 
    > [!WARNING]
    > If you ignore a directory and later a file is added to that directory, the tool won't be able to detect this. Be sure files won't be added or that files added to the directory won't ever matter.
+
+   > [!NOTE]
+   > Notice that the environment variable `HOME` was used as root of the profile. At runtime, the variable will be evaluated and replaced. You can use environment variables in all string properties by using the `${NAME}` notation.
 
 3. Now just execute the tool with the `-b` option to back up!
 
@@ -81,7 +84,7 @@ Sometimes you may have multiple devices which you want to share certain configur
   "profiles": [
     {
       "name": "Neofetch",
-      "root": "$HOME/.config/neofetch",
+      "root": "${HOME}/.config/neofetch",
       "include": [
         "config.conf"
       ],
@@ -89,7 +92,7 @@ Sometimes you may have multiple devices which you want to share certain configur
     },
     {
       "name": "FreeCAD",
-      "root": "$HOME/.config/FreeCAD",
+      "root": "${HOME}/.config/FreeCAD",
       "include": [
         "FreeCAD.conf",
         "system.cfg",
@@ -99,7 +102,7 @@ Sometimes you may have multiple devices which you want to share certain configur
     },
     {
       "name": "BatteryMonitor",
-      "root": "$HOME/.config/BatteryMonitor",
+      "root": "${HOME}/.config/BatteryMonitor",
       "include": [
         "config.conf"
       ],
@@ -107,7 +110,7 @@ Sometimes you may have multiple devices which you want to share certain configur
     },
     {
       "name": "KDE",
-      "root": "$HOME/.config",
+      "root": "${HOME}/.config",
       "include": [
         "kde.org/*"
       ],
@@ -115,7 +118,7 @@ Sometimes you may have multiple devices which you want to share certain configur
     },
     {
       "name": "Shared",
-      "root": "$HOME",
+      "root": "${HOME}",
       "inheritProfiles": [
         "Neofetch"
       ],
@@ -125,7 +128,7 @@ Sometimes you may have multiple devices which you want to share certain configur
     {
       "name": "Desktop",
       "default": true,
-      "root": "$HOME",
+      "root": "${HOME}",
       "includeProfiles": [
         "Shared"
       ],
@@ -140,7 +143,7 @@ Sometimes you may have multiple devices which you want to share certain configur
     },
     {
       "name": "Laptop",
-      "root": "$HOME",
+      "root": "${HOME}",
       "includeProfiles": [
         "Shared"
       ],
@@ -169,6 +172,13 @@ Let's assume we run the `Desktop` profile with `dotsave -b ~/my-backup/home.json
 
 > [!TIP]
 > You can version your backups using `git` in case you ever want to go back to a previous configuration.
+
+### Other options
+
+These are other command line arguments you can use:
+
+- `-v` or `--verbose` - Activates verbose mode to get a more detailed idea of what the tool is doing.
+- `-d` or `--dry-run` - Activates simulation mode where no changes to the filesystem will be done. Most useful when mixed with verbose mode.
 
 ## License
 
