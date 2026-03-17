@@ -2,23 +2,23 @@ package com.github.jurgencruz.dotsave.parse
 
 /**
  * The parser for the console arguments.
- * @constructor Create a new Argument Parser.
  */
 @Suppress("HardCodedStringLiteral")
-class ArgsParser {
-  companion object {
-    private const val HELP_SHORT = "-h"
-    private const val HELP_LONG = "--help"
-    private const val VERSION_SHORT = "-V"
-    private const val VERSION_LONG = "--version"
-    private const val VERBOSE_SHORT = "-v"
-    private const val VERBOSE_LONG = "--verbose"
-    private const val BACKUP_SHORT = "-b"
-    private const val BACKUP_LONG = "--back-up"
-    private const val RESTORE_SHORT = "-r"
-    private const val RESTORE_LONG = "--restore"
-  }
-
+object ArgsParser {
+  private const val HELP_SHORT = "-h"
+  private const val HELP_LONG = "--help"
+  private const val VERSION_SHORT = "-V"
+  private const val VERSION_LONG = "--version"
+  private const val VERBOSE_SHORT = "-v"
+  private const val VERBOSE_LONG = "--verbose"
+  private const val DRY_RUN_SHORT = "-d"
+  private const val DRY_RUN_LONG = "--dry-run"
+  private const val BACKUP_SHORT = "-b"
+  private const val BACKUP_LONG = "--back-up"
+  private const val RESTORE_SHORT = "-r"
+  private const val RESTORE_LONG = "--restore"
+  private const val PROFILE_SHORT = "-p"
+  private const val PROFILE_LONG = "--profile"
   /**
    * Parse the console arguments.
    * @param args The console arguments to parse.
@@ -26,29 +26,42 @@ class ArgsParser {
    */
   fun parse(args: Array<String>): Result<ArgsParseResult> {
     var verbose = false
+    var dryRun = false
     var action = Action.USAGE
     var path = ""
+    var profile: String? = null
     var i = 0
     while (i < args.size) {
       val arg = args[i]
       ++i
-      if (shouldShowUsage(arg)) {
-        action = Action.USAGE
-        break
-      }
-      if (shouldShowVersion(arg)) {
-        action = Action.VERSION
-        break
-      }
-      if (isVerbose(arg)) {
-        verbose = true
-        continue
-      }
-      if (action != Action.USAGE) {
-        return Result.failure(Exception("You can only specify one action"))
-      }
+
       when {
-        isSave(arg)  -> {
+        shouldShowUsage(arg)   -> {
+          if (action != Action.USAGE) {
+            return Result.failure(Exception("You can only specify one action"))
+          }
+          return Result.success(ArgsParseResult(Action.USAGE, "", false, null, false))
+        }
+
+        shouldShowVersion(arg) -> {
+          if (action != Action.USAGE) {
+            return Result.failure(Exception("You can only specify one action"))
+          }
+          return Result.success(ArgsParseResult(Action.VERSION, "", false, null, false))
+        }
+
+        isVerbose(arg)         -> {
+          verbose = true
+        }
+
+        isDryRun(arg)          -> {
+          dryRun = true
+        }
+
+        isSave(arg)            -> {
+          if (action != Action.USAGE) {
+            return Result.failure(Exception("You can only specify one action"))
+          }
           action = Action.BACKUP
           if (i >= args.size) {
             return Result.failure(Exception("No path specified for saving"))
@@ -57,24 +70,37 @@ class ArgsParser {
           ++i
         }
 
-        isApply(arg) -> {
+        isApply(arg)           -> {
+          if (action != Action.USAGE) {
+            return Result.failure(Exception("You can only specify one action"))
+          }
           action = Action.RESTORE
           if (i >= args.size) {
-            return Result.failure(Exception("No path specified for applying"))
+            return Result.failure(Exception("No path specified for restoring"))
           }
           path = args[i]
           ++i
         }
 
-        else         -> return Result.failure(Exception("Unrecognized argument: $arg"))
+        isProfileName(arg)     -> {
+          if (i >= args.size) {
+            return Result.failure(Exception("No profile name specified"))
+          }
+          profile = args[i]
+          ++i
+        }
+
+        else                   -> return Result.failure(Exception("Unrecognized argument: $arg"))
       }
     }
-    return Result.success(ArgsParseResult(action, path, verbose))
+    return Result.success(ArgsParseResult(action, path, verbose, profile, dryRun))
   }
 
   private fun shouldShowUsage(arg: String): Boolean = arg == HELP_SHORT || arg == HELP_LONG
   private fun shouldShowVersion(arg: String): Boolean = arg == VERSION_SHORT || arg == VERSION_LONG
   private fun isVerbose(arg: String): Boolean = arg == VERBOSE_SHORT || arg == VERBOSE_LONG
+  private fun isDryRun(arg: String): Boolean = arg == DRY_RUN_SHORT || arg == DRY_RUN_LONG
   private fun isSave(arg: String): Boolean = arg == BACKUP_SHORT || arg == BACKUP_LONG
   private fun isApply(arg: String): Boolean = arg == RESTORE_SHORT || arg == RESTORE_LONG
+  private fun isProfileName(arg: String): Boolean = arg == PROFILE_SHORT || arg == PROFILE_LONG
 }

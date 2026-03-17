@@ -2,93 +2,83 @@ package com.github.jurgencruz.dotsave
 
 import com.github.jurgencruz.dotsave.config.Config
 import com.github.jurgencruz.dotsave.config.Profile
-import com.github.jurgencruz.dotsave.dataaccess.FileSystem
-import com.github.jurgencruz.dotsave.logging.Logger
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.Mock
-import org.mockito.junit.jupiter.MockitoExtension
-import org.mockito.kotlin.any
-import org.mockito.kotlin.argumentCaptor
-import org.mockito.kotlin.times
-import org.mockito.kotlin.verify
-import org.mockito.kotlin.whenever
 import java.nio.file.Path
+import kotlin.io.path.Path
 
-@ExtendWith(MockitoExtension::class)
 class BackupHandlerTest {
-  private lateinit var mTarget: BackupHandler
-
-  @Mock
-  private lateinit var mFileSystem: FileSystem
-
-  @Mock
-  private lateinit var mLogger: Logger
-
-  @BeforeEach
-  fun setup() {
-    mTarget = BackupHandler(mFileSystem, mLogger)
+  @Test
+  fun backupShouldFailIfNoDefaultAndNoProfileSelected() {
+    val config = Config(listOf(Profile("program1", false, "root1", emptyList(), emptyList(), emptyList(), emptyList())))
+    val result = BackupHandler.backup(config, Path("backup"), null, { _, _ -> }, { Result.success(Unit) }, { _, _ -> Result.success(Unit) }, { _ -> sequenceOf() })
+    assertThat(result.exceptionOrNull()).hasMessage("No default profile in config file and no profile name specified")
   }
-
+  @Test
+  fun backupShouldFailIfNProfileSelectedDoesNotExist() {
+    val config = Config(listOf(Profile("program1", false, "root1", emptyList(), emptyList(), emptyList(), emptyList())))
+    val result = BackupHandler.backup(config, Path("backup"), "profile1", { _, _ -> }, { Result.success(Unit) }, { _, _ -> Result.success(Unit) }, { _ -> sequenceOf() })
+    assertThat(result.exceptionOrNull()).hasMessage("No profile with name: profile1 exists")
+  }
   @Test
   fun backupShouldCopyFilesToCorrectDestination() {
-    whenever(mFileSystem.recreateDir(any())).thenReturn(Result.success(Unit))
-    whenever(mFileSystem.copy(any(), any())).thenReturn(Result.success(Unit))
-    val config = Config(listOf(Profile("program1", "root1", listOf("file1", "folder2")), Profile("program2", "root2", listOf("file3", "folder4"))))
-    val result = mTarget.backup(config, "backup/dotsave.json")
-    assertThat(result.isSuccess).isTrue()
-    val srcCaptor = argumentCaptor<Path>()
-    val destCaptor = argumentCaptor<Path>()
-    verify(mFileSystem, times(4)).copy(srcCaptor.capture(), destCaptor.capture())
-    assertThat(srcCaptor.allValues).zipSatisfy(listOf("root1/file1", "root1/folder2", "root2/file3", "root2/folder4")) { a, b ->
-      assertThat(a).hasToString(b)
-    }
-    assertThat(destCaptor.allValues).zipSatisfy(listOf("backup/program1/file1", "backup/program1/folder2", "backup/program2/file3", "backup/program2/folder4")) { a, b ->
-      assertThat(a).hasToString(b)
+    val copyList = mutableListOf<Pair<Path, Path>>()
+    val config = Config(listOf(Profile("program1", false, "root1", emptyList(), emptyList(), listOf("file1", "folder2"), emptyList()), Profile("program2", false, "root2", emptyList(), emptyList(), listOf("file3", "folder4"), emptyList())))
+    val result = BackupHandler.backup(config, Path("backup"), "program1", { _, _ -> }, { Result.success(Unit) }, { p1, p2 -> Result.success(copyList.add(p1 to p2)).map { } }, { _ -> sequenceOf() })
+    assertThat(result.exceptionOrNull()).isNull()
+    assertThat(copyList).hasSize(2)
+    assertThat(copyList).zipSatisfy(listOf("root1/file1" to "backup/program1/file1", "root1/folder2" to "backup/program1/folder2")) { (srcPath, destPath), (expectedSrc, expectedDest) ->
+      assertThat(srcPath).hasToString(expectedSrc)
+      assertThat(destPath).hasToString(expectedDest)
     }
   }
-
   @Test
   fun backupShouldFailIfCannotCreateDestinationDir() {
-    whenever(mFileSystem.recreateDir(any())).thenReturn(Result.failure(IllegalAccessException("test")))
-    val config = Config(listOf(Profile("test1", "root1", listOf("file1", "folder1"))))
-    val result = mTarget.backup(config, "backup/dotsave.json")
-    assertThat(result.isFailure).isTrue()
+    val config = Config(listOf(Profile("test1", false, "root1", emptyList(), emptyList(), listOf("file1", "folder1"), emptyList())))
+    val result = BackupHandler.backup(config, Path("backup"), "test1", { _, _ -> }, { Result.failure(IllegalAccessException("test")) }, { _, _ -> Result.success(Unit) }, { _ -> sequenceOf() })
     assertThat(result.exceptionOrNull()).hasMessage("test")
   }
-
   @Test
   fun backupShouldFailIfCannotCopyAFile() {
-    whenever(mFileSystem.recreateDir(any())).thenReturn(Result.success(Unit))
-    whenever(mFileSystem.copy(any(), any())).thenReturn(Result.failure(IllegalAccessException("test")))
-    val config = Config(listOf(Profile("program1", "root1", listOf("file1", "folder2")), Profile("program2", "root2", listOf("file3", "folder4"))))
-    val result = mTarget.backup(config, "backup/dotsave.json")
-    assertThat(result.isFailure).isTrue()
+    val config = Config(listOf(Profile("program1", false, "root1", emptyList(), emptyList(), listOf("file1", "folder2"), emptyList()), Profile("program2", false, "root2", emptyList(), emptyList(), listOf("file3", "folder4"), emptyList())))
+    val result = BackupHandler.backup(config, Path("backup"), "program1", { _, _ -> }, { Result.success(Unit) }, { _, _ -> Result.failure(IllegalAccessException("test")) }, { _ -> sequenceOf() })
     assertThat(result.exceptionOrNull()).hasMessage("test")
   }
-
   @Test
   fun backupShouldAggregateErrorsAndContinue() {
-    whenever(mFileSystem.recreateDir(any())).thenReturn(Result.success(Unit))
-    whenever(mFileSystem.copy(any(), any())).thenReturn(Result.failure(IllegalAccessException("test1")), Result.failure(IllegalAccessException("test2")), Result.failure(IllegalAccessException("test3")), Result.failure(IllegalAccessException("test4")))
-    val config = Config(listOf(Profile("program1", "root1", listOf("file1", "folder2")), Profile("program2", "root2", listOf("file3", "folder4"))))
-    val result = mTarget.backup(config, "backup/dotsave.json")
-    assertThat(result.isFailure).isTrue()
+    val config = Config(listOf(Profile("program1", false, "root1", emptyList(), emptyList(), listOf("file1", "folder2", "file3", "folder4"), emptyList())))
+    var i = 0
+    val result = BackupHandler.backup(config, Path("backup"), "program1", { _, _ -> }, { Result.success(Unit) }, { _, _ -> Result.failure(IllegalAccessException("test${++i}")) }, { _ -> sequenceOf() })
     val exception = result.exceptionOrNull()
     assertThat(exception).hasMessage("test1")
     assertThat(exception!!.suppressed).zipSatisfy(arrayOf("test2", "test3", "test4")) { a, b ->
       assertThat(a).hasMessage(b)
     }
-    val srcCaptor = argumentCaptor<Path>()
-    val destCaptor = argumentCaptor<Path>()
-    verify(mFileSystem, times(4)).copy(srcCaptor.capture(), destCaptor.capture())
-    assertThat(srcCaptor.allValues).zipSatisfy(listOf("root1/file1", "root1/folder2", "root2/file3", "root2/folder4")) { a, b ->
-      assertThat(a).hasToString(b)
+  }
+  @Test
+  fun backupShouldRunIncludedProfiles() {
+    val copyList = mutableListOf<Pair<Path, Path>>()
+    val config = Config(listOf(Profile("program1", true, "root1", listOf("include1"), emptyList(), listOf("file1", "folder2"), listOf("missing1")), Profile("include1", false, "root2", listOf("include2"), emptyList(), listOf("file3", "folder4"), listOf("missing1")), Profile("include2", false, "root3", emptyList(), emptyList(), listOf("file5", "folder6"), listOf("missing1"))))
+    val result = BackupHandler.backup(config, Path("backup"), null, { _, _ -> }, { Result.success(Unit) }, { p1, p2 -> Result.success(copyList.add(p1 to p2)).map { } }, { a -> sequenceOf(a.resolve("missing1"), a.resolve("missing2")) })
+    assertThat(result.exceptionOrNull()).isNull()
+    assertThat(result.getOrThrow()).containsExactly("root1/missing2", "root2/missing2", "root3/missing2")
+    assertThat(copyList).hasSize(6)
+    assertThat(copyList).zipSatisfy(listOf("root3/file5" to "backup/include2/file5", "root3/folder6" to "backup/include2/folder6", "root2/file3" to "backup/include1/file3", "root2/folder4" to "backup/include1/folder4", "root1/file1" to "backup/program1/file1", "root1/folder2" to "backup/program1/folder2")) { (srcPath, destPath), (expectedSrc, expectedDest) ->
+      assertThat(srcPath).hasToString(expectedSrc)
+      assertThat(destPath).hasToString(expectedDest)
     }
-    assertThat(destCaptor.allValues).zipSatisfy(listOf("backup/program1/file1", "backup/program1/folder2", "backup/program2/file3", "backup/program2/folder4")) { a, b ->
-      assertThat(a).hasToString(b)
+  }
+  @Test
+  fun backupShouldMergeInheritedProfiles() {
+    val copyList = mutableListOf<Pair<Path, Path>>()
+    val config = Config(listOf(Profile("program1", true, "root1", emptyList(), listOf("inherit1"), listOf("file1", "folder2"), listOf("missing1", "missing2")), Profile("inherit1", false, "root1/sub2", listOf("include1"), emptyList(), listOf("file3", "folder4"), emptyList()), Profile("include1", false, "root3", emptyList(), emptyList(), listOf("file5", "folder6"), emptyList())))
+    val result = BackupHandler.backup(config, Path("backup"), null, { _, _ -> }, { Result.success(Unit) }, { p1, p2 -> Result.success(copyList.add(p1 to p2)).map { } }, { a -> sequenceOf(a.resolve("missing1"), a.resolve("missing2")) })
+    assertThat(result.exceptionOrNull()).isNull()
+    assertThat(result.getOrThrow()).containsExactly("root3/missing1", "root3/missing2")
+    assertThat(copyList).hasSize(6)
+    assertThat(copyList).zipSatisfy(listOf("root3/file5" to "backup/include1/file5", "root3/folder6" to "backup/include1/folder6", "root1/file1" to "backup/program1/file1", "root1/folder2" to "backup/program1/folder2", "root1/sub2/file3" to "backup/program1/sub2/file3", "root1/sub2/folder4" to "backup/program1/sub2/folder4")) { (srcPath, destPath), (expectedSrc, expectedDest) ->
+      assertThat(srcPath).hasToString(expectedSrc)
+      assertThat(destPath).hasToString(expectedDest)
     }
   }
 }

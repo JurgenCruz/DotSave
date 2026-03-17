@@ -14,8 +14,7 @@ A simple tool to back up and restore dot files (config files in Linux) for Linux
 
 ## Installation
 
-DotSave requires the JRE to be installed in your system to work. Check with your distro what is the best way to install
-it in your OS. After that just:
+DotSave requires the JRE to be installed in your system to work. Check with your distro what is the best way to install it in your OS. After that just:
 
 1. Download the latest release.
 2. Unzip it.
@@ -25,46 +24,151 @@ it in your OS. After that just:
 
 ## Usage
 
+### Getting Started
+
 1. First you need a place to put your backup:
 
    ```bash
    mkdir ~/my-backup
    ```
 
-2. Next you need to make a config file (for example `~/my-backup/apps.json`) in your favorite editor:
+2. Next you need to make a config file (for example `~/my-backup/home.json`) in your favorite editor:
 
    ```json
    {
      "profiles": [
        {
-         "name": "neofetch",
-         "root": "$HOME/.config/neofetch",
+         "name": "Home Base",
+         "default": true,
+         "root": "$HOME",
          "include": [
-           "config.conf"
+           ".config/neofetch/config.conf"
+         ],
+         "exclude": [
+           ".npm/"
          ]
        }
      ]
    }
    ```
 
-   Each `profile` will store all the files and directories specified in `include` in the parent directory of the config
-   file and the name of the profile. For example, the json above will store its profile in `~/my-backup/neofetch`. Files
-   and directories should preserve their owner and permissions.
+   Each `profile` will store all the files and directories specified in `include`, except for files and directories specified in `exclude`, in the parent directory of the config file and the name of the profile. For example, the JSON above will store its profile in `~/my-backup/Home Base`. Files and directories should preserve their owner and permissions. The tool will also check the root directory of the profile for files not included or excluded and will issue a warning that those files will be implicitly excluded until explicitly included or excluded. This way you can discover if a new file was added by an existing or new app.
+
+   > [!WARNING]
+   > If you exclude a directory and later a file is added to that directory, the tool won't be able to detect this. Be sure files won't be added or that files added to the directory won't ever matter.
 
 3. Now just execute the tool with the `-b` option to back up!
 
    ```bash
-   dotsave -b ~/my-backup/apps.json
+   dotsave -b ~/my-backup/home.json
    ```
 
 4. To restore, just use the `-r` option:
 
    ```bash
-   dotsave -r ~/my-backup/apps.json
+   dotsave -r ~/my-backup/home.json
    ```
 
-> [!TIP]
+> [!IMPORTANT]
 > You can create a separate config file that backups files owned by root and use `sudo` just with that config file!
+
+### Nested profiles
+
+Sometimes you may have multiple devices which you want to share certain configuration between them, but not all. You can add more profiles to the config file and compose a profile from other using `includeProfiles` and `inheritProfiles`. For example:
+
+```json
+{
+  "profiles": [
+    {
+      "name": "Neofetch",
+      "root": "$HOME/.config/neofetch",
+      "include": [
+        "config.conf"
+      ],
+      "exclude": []
+    },
+    {
+      "name": "FreeCAD",
+      "root": "$HOME/.config/FreeCAD",
+      "include": [
+        "FreeCAD.conf",
+        "system.cfg",
+        "user.cfg"
+      ],
+      "exclude": []
+    },
+    {
+      "name": "BatteryMonitor",
+      "root": "$HOME/.config/BatteryMonitor",
+      "include": [
+        "config.conf"
+      ],
+      "exclude": []
+    },
+    {
+      "name": "KDE",
+      "root": "$HOME/.config",
+      "include": [
+        "kde.org/*"
+      ],
+      "exclude": []
+    },
+    {
+      "name": "Shared",
+      "root": "$HOME",
+      "inheritProfiles": [
+        "Neofetch"
+      ],
+      "include": [],
+      "exclude": []
+    },
+    {
+      "name": "Desktop",
+      "default": true,
+      "root": "$HOME",
+      "includeProfiles": [
+        "Shared"
+      ],
+      "inheritProfiles": [
+        "FreeCAD",
+        "KDE"
+      ],
+      "include": [],
+      "exclude": [
+        ".gradle/"
+      ]
+    },
+    {
+      "name": "Laptop",
+      "root": "$HOME",
+      "includeProfiles": [
+        "Shared"
+      ],
+      "inheritProfiles": [
+        "BatteryMonitor",
+        "KDE"
+      ],
+      "include": [],
+      "exclude": []
+    }
+  ]
+}
+```
+
+Let's assume we run the `Desktop` profile with `dotsave -b ~/my-backup/home.json -p Desktop`:
+
+1. `Desktop` profile will first execute the profiles in the `includeProfiles` list, in this case `Shared`. So we will end with a directory `~/my-backup/Shared`.
+2. `Shared` profile doesn't have any `includeProfiles` so it will skip that step. Instead, it will merge in itself all the profiles in `inheritProfiles`, in this case `Neofetch`. so we will have a file backed up at `~/my-backup/Shared/.config/neofetch/config.conf`. Notice there is no top level "Neofetch" directory, is it inside "Shared".
+3. After executing `Shared`, `Desktop` will merge the profiles in `inheritProfiles` which are `FreeCAD` and `KDE`. So a `~/my-backup/Desktop/` directory will be created and back up the files like `~/my-backup/Desktop/.config/FreeCAD/FreeCAD.conf` and `~/my-backup/Desktop/.config/kde.org/plasmashell.conf`.
+
+> [!NOTE]
+> Note that both `Desktop` and `Laptop` profiles **inherit** `KDE`, but the KDE backups will be stored in different directories, so the contents of the files can be different. Likewise, both of them **include** `Shared`, which will be stored in the same `Shared` directory and thus shared between the two profiles.
+
+> [!IMPORTANT]
+> You can mark a profile as the default with the `default` property so you don't need to specify the profile name in the command line. Only **one** profile can be marked as default.
+
+> [!TIP]
+> You can version your backups using `git` in case you ever want to go back to a previous configuration.
 
 ## License
 
@@ -72,8 +176,7 @@ This project is under the [GNU GPL-3.0](https://choosealicense.com/licenses/gpl-
 
 ## Contributing
 
-- If you have issues with DotSave, please open a bug report with as detailed information on how to reproduce the issue,
-  and I'll try to fix it.
+- If you have issues with DotSave, please open a bug report with as detailed information on how to reproduce the issue, and I'll try to fix it.
 - If you wish to improve DotSave, please submit a PR with your changes and I will review them.
 
 ## Buy me a coffee

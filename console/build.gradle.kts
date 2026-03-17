@@ -3,15 +3,12 @@ plugins {
   idea
   jacoco
   alias(libs.plugins.kotlin.jvm)
-  alias(libs.plugins.kotlin.kapt)
 }
 val mockitoAgent = configurations.create("mockitoAgent")
 dependencies {
   repositories(RepositoryHandler::mavenCentral)
-  kapt(libs.dagger.compiler)
   implementation(project(":core"))
   implementation(project(":filesystemdataaccess"))
-  implementation(libs.dagger)
   testImplementation(platform(libs.junit.bom))
   testImplementation(libs.junit)
   testImplementation(libs.bundles.test)
