@@ -98,14 +98,14 @@ class EnvVarReplacerTest {
     }
   }
   @Test
-  fun replaceEnvVarsShouldReplaceEnvVarInExclude() {
-    val config = Config(listOf(Profile("name", "root", emptyList(), listOf($$"${exclude1}s", $$"${exclude2}s"))))
+  fun replaceEnvVarsShouldReplaceEnvVarInIgnore() {
+    val config = Config(listOf(Profile("name", "root", emptyList(), listOf($$"${ignore1}s", $$"${ignore2}s"))))
     val result = EnvVarReplacer.replaceEnvVars(config)
     assertThat(result.exceptionOrNull()).isNull()
-    assertThat(result.getOrThrow().profiles[0].exclude).containsExactly("(replaced-exclude1)s", "(replaced-exclude2)s")
+    assertThat(result.getOrThrow().profiles[0].ignore).containsExactly("(replaced-ignore1)s", "(replaced-ignore2)s")
   }
   @Test
-  fun replaceEnvVarsShouldReturnErrorIfInvalidExclude() {
+  fun replaceEnvVarsShouldReturnErrorIfInvalidIgnore() {
     val config = Config(listOf(Profile("name", "root", emptyList(), listOf($$"${exception}s", $$"${exception}s", $$"${exception}s"))))
     val result = EnvVarReplacer.replaceEnvVars(config)
     val exception = result.exceptionOrNull()

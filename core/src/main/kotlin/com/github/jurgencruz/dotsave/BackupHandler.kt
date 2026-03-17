@@ -47,7 +47,7 @@ object BackupHandler {
     backupFiles(p, backupPath, log, copy).map { missingFiles }
   }
 
-  private fun calculateMissingFiles(profile: Profile, existingMissingFiles: List<String>, walk: (Path) -> Sequence<Path>) = walk(Path(profile.root)).map { "$it" }.toMutableSet().also { it.addAll(existingMissingFiles) }.filter { !profile.exclude.map { "${Path(profile.root, it)}" }.contains(it) }
+  private fun calculateMissingFiles(profile: Profile, existingMissingFiles: List<String>, walk: (Path) -> Sequence<Path>) = walk(Path(profile.root)).map { "$it" }.toMutableSet().also { it.addAll(existingMissingFiles) }.filter { !profile.ignore.map { "${Path(profile.root, it)}" }.contains(it) }
   private fun backupFiles(profile: Profile, backupPath: Path, log: (LogLevel, String) -> Unit, copy: (Path, Path) -> Result<Unit>): Result<Unit> = profile.include.asSequence().map { f ->
     toSafePath(profile.root, f).flatMap { path ->
       runCatching {

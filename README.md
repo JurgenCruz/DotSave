@@ -44,7 +44,7 @@ DotSave requires the JRE to be installed in your system to work. Check with your
          "include": [
            ".config/neofetch/config.conf"
          ],
-         "exclude": [
+         "ignore": [
            ".npm/"
          ]
        }
@@ -52,10 +52,10 @@ DotSave requires the JRE to be installed in your system to work. Check with your
    }
    ```
 
-   Each `profile` will store all the files and directories specified in `include`, except for files and directories specified in `exclude`, in the parent directory of the config file and the name of the profile. For example, the JSON above will store its profile in `~/my-backup/Home Base`. Files and directories should preserve their owner and permissions. The tool will also check the root directory of the profile for files not included or excluded and will issue a warning that those files will be implicitly excluded until explicitly included or excluded. This way you can discover if a new file was added by an existing or new app.
+   Each `profile` will store all the files and directories specified in `include`, except for files and directories specified in `ignore`, in the parent directory of the config file and the name of the profile. For example, the JSON above will store its profile in `~/my-backup/Home Base`. Files and directories should preserve their owner and permissions. The tool will also check the root directory of the profile for files not included or ignored and will issue a warning that those files will be implicitly ignored until explicitly included or ignored. This way you can discover if a new file was added by an existing or new app.
 
    > [!WARNING]
-   > If you exclude a directory and later a file is added to that directory, the tool won't be able to detect this. Be sure files won't be added or that files added to the directory won't ever matter.
+   > If you ignore a directory and later a file is added to that directory, the tool won't be able to detect this. Be sure files won't be added or that files added to the directory won't ever matter.
 
 3. Now just execute the tool with the `-b` option to back up!
 
@@ -85,7 +85,7 @@ Sometimes you may have multiple devices which you want to share certain configur
       "include": [
         "config.conf"
       ],
-      "exclude": []
+      "ignore": []
     },
     {
       "name": "FreeCAD",
@@ -95,7 +95,7 @@ Sometimes you may have multiple devices which you want to share certain configur
         "system.cfg",
         "user.cfg"
       ],
-      "exclude": []
+      "ignore": []
     },
     {
       "name": "BatteryMonitor",
@@ -103,7 +103,7 @@ Sometimes you may have multiple devices which you want to share certain configur
       "include": [
         "config.conf"
       ],
-      "exclude": []
+      "ignore": []
     },
     {
       "name": "KDE",
@@ -111,7 +111,7 @@ Sometimes you may have multiple devices which you want to share certain configur
       "include": [
         "kde.org/*"
       ],
-      "exclude": []
+      "ignore": []
     },
     {
       "name": "Shared",
@@ -120,7 +120,7 @@ Sometimes you may have multiple devices which you want to share certain configur
         "Neofetch"
       ],
       "include": [],
-      "exclude": []
+      "ignore": []
     },
     {
       "name": "Desktop",
@@ -134,7 +134,7 @@ Sometimes you may have multiple devices which you want to share certain configur
         "KDE"
       ],
       "include": [],
-      "exclude": [
+      "ignore": [
         ".gradle/"
       ]
     },
@@ -149,7 +149,7 @@ Sometimes you may have multiple devices which you want to share certain configur
         "KDE"
       ],
       "include": [],
-      "exclude": []
+      "ignore": []
     }
   ]
 }

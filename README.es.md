@@ -44,7 +44,7 @@ DotSave requiere que el JRE esté instalado en su sistema para funcionar. Consul
          "include": [
            ".config/neofetch/config.conf"
          ],
-         "exclude": [
+         "ignore": [
            ".npm/"
          ]
        }
@@ -52,10 +52,10 @@ DotSave requiere que el JRE esté instalado en su sistema para funcionar. Consul
    }
    ```
 
-   Cada `perfil` almacenará todos los archivos y directorios especificados en `include`, excepto por los archivos y directorios especificados en `exclude`, en el directorio padre del archivo de configuración y el nombre del perfil. Por ejemplo, el JSON anterior almacenará su perfil en `~/my-backup/Home Base`. Los archivos y directorios deben conservar su dueño y sus permisos. La herramienta también revisará el directorio raíz del perfil por archivos no incluidos o excluidos and mostrará una advertencia que esos archivos serán implícitamente excluidos hasta que sean explícitamente incluidos o excluidos. De esta manera puede descubrir si un nuevo archivo fue agregado por una aplicación existente o nueva.
+   Cada `perfil` almacenará todos los archivos y directorios especificados en `include`, excepto por los archivos y directorios especificados en `ignore`, en el directorio padre del archivo de configuración y el nombre del perfil. Por ejemplo, el JSON anterior almacenará su perfil en `~/my-backup/Home Base`. Los archivos y directorios deben conservar su dueño y sus permisos. La herramienta también revisará el directorio raíz del perfil por archivos no incluidos o ignorados y mostrará una advertencia que esos archivos serán implícitamente ignorados hasta que sean explícitamente incluidos o ignorados. De esta manera puede descubrir si un nuevo archivo fue agregado por una aplicación existente o nueva.
 
    > [!WARNING]
-   > Si excluye un directorio y más tarde un archivo es agregado a ese directorio, la herramienta no podrá detectar esto. Asegúrese de que no serán agregados archivos o que los archivos agregados nunca serán relevantes.
+   > Si ignora un directorio y más tarde un archivo es agregado a ese directorio, la herramienta no podrá detectar esto. Asegúrese de que no serán agregados archivos o que los archivos agregados nunca serán relevantes.
 
 3. ¡Ahora simplemente ejecute la herramienta con la opción `-b` para respaldar!
 
@@ -85,7 +85,7 @@ A veces uno puede tener multiples dispositivos que quiere compartan cierta confi
       "include": [
         "config.conf"
       ],
-      "exclude": []
+      "ignore": []
     },
     {
       "name": "FreeCAD",
@@ -95,7 +95,7 @@ A veces uno puede tener multiples dispositivos que quiere compartan cierta confi
         "system.cfg",
         "user.cfg"
       ],
-      "exclude": []
+      "ignore": []
     },
     {
       "name": "BatteryMonitor",
@@ -103,7 +103,7 @@ A veces uno puede tener multiples dispositivos que quiere compartan cierta confi
       "include": [
         "config.conf"
       ],
-      "exclude": []
+      "ignore": []
     },
     {
       "name": "KDE",
@@ -111,7 +111,7 @@ A veces uno puede tener multiples dispositivos que quiere compartan cierta confi
       "include": [
         "kde.org/*"
       ],
-      "exclude": []
+      "ignore": []
     },
     {
       "name": "Shared",
@@ -120,7 +120,7 @@ A veces uno puede tener multiples dispositivos que quiere compartan cierta confi
         "Neofetch"
       ],
       "include": [],
-      "exclude": []
+      "ignore": []
     },
     {
       "name": "Desktop",
@@ -134,7 +134,7 @@ A veces uno puede tener multiples dispositivos que quiere compartan cierta confi
         "KDE"
       ],
       "include": [],
-      "exclude": [
+      "ignore": [
         ".gradle/"
       ]
     },
@@ -149,7 +149,7 @@ A veces uno puede tener multiples dispositivos que quiere compartan cierta confi
         "KDE"
       ],
       "include": [],
-      "exclude": []
+      "ignore": []
     }
   ]
 }

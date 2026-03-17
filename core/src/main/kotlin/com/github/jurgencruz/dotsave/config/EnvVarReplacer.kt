@@ -11,7 +11,7 @@ object EnvVarReplacer {
   private val regex = Regex("\\$(?<name>\\{[A-Za-z_]\\w+}|[A-Za-z_]\\w+)") // NON-NLS
   internal var getEnv: (String) -> String = ::getEnvVar
   /**
-   * Replaces all Environment Variables in the config including in name, root, includeProfiles, inheritProfiles, include and exclude.
+   * Replaces all Environment Variables in the config including in name, root, includeProfiles, inheritProfiles, include and ignore.
    * @param config The config to replace Env Vars on.
    * @return A result object that has the new config file with replaced environments or an error if it failed.
    */
@@ -25,7 +25,7 @@ object EnvVarReplacer {
   }.flatMap { p ->
     replaceAllItemsOnList(p.include).map { p.copy(include = it) }
   }.flatMap { p ->
-    replaceAllItemsOnList(p.exclude).map { p.copy(exclude = it) }
+    replaceAllItemsOnList(p.ignore).map { p.copy(ignore = it) }
   }
 
   private fun replace(string: String) = runCatching {

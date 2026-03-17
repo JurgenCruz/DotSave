@@ -13,10 +13,10 @@ import kotlin.io.path.Path
  * @param includeProfiles List of profiles to execute before executing this one.
  * @param inheritProfiles List of profiles to merge into this profile before executing.
  * @param include List of files and directories to include in the backup or restore.
- * @param exclude List of files and directories to exclude in the backup. Used mainly to disable warnings about files not being backed up.
+ * @param ignore List of files and directories to ignore in the backup. Used mainly to disable warnings about files not being backed up.
  */
 @Serializable
-data class Profile(val name: String, val root: String, val include: List<String>, val exclude: List<String>, val includeProfiles: List<String> = emptyList(), val inheritProfiles: List<String> = emptyList(), val default: Boolean = false) {
+data class Profile(val name: String, val root: String, val include: List<String>, val ignore: List<String>, val includeProfiles: List<String> = emptyList(), val inheritProfiles: List<String> = emptyList(), val default: Boolean = false) {
   companion object {
     fun mergeProfile(config: Config, profile: Profile): Result<Profile> {
       return profile.inheritProfiles.fold(Result.success(profile)) { profile, toInheritName ->
@@ -26,11 +26,11 @@ data class Profile(val name: String, val root: String, val include: List<String>
           val prefix = Path(profile.root).relativize(Path(toInherit.root))
           val newInclude = profile.include.toMutableSet()
           newInclude.addAll(toInherit.include.map { prefix.resolve(it).toString() })
-          val newExclude = profile.exclude.toMutableSet()
-          newExclude.addAll(toInherit.exclude.map { prefix.resolve(it).toString() })
+          val newIgnore = profile.ignore.toMutableSet()
+          newIgnore.addAll(toInherit.ignore.map { prefix.resolve(it).toString() })
           val newIncludeProfiles = profile.includeProfiles.toMutableSet()
           newIncludeProfiles.addAll(toInherit.includeProfiles)
-          profile.copy(include = newInclude.toList(), exclude = newExclude.toList(), includeProfiles = newIncludeProfiles.toList())
+          profile.copy(include = newInclude.toList(), ignore = newIgnore.toList(), includeProfiles = newIncludeProfiles.toList())
         }
       }
     }
@@ -43,6 +43,6 @@ data class Profile(val name: String, val root: String, val include: List<String>
     require(includeProfiles.all { it.isNotBlank() }) { "IncludeProfile items cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values." }
     require(inheritProfiles.all { it.isNotBlank() }) { "InheritProfile items cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values." }
     require(include.all { it.isNotBlank() }) { "Include items cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values." }
-    require(exclude.all { it.isNotBlank() }) { "Ignore items cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values." }
+    require(ignore.all { it.isNotBlank() }) { "Ignore items cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values." }
   }
 }

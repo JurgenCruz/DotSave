@@ -18,21 +18,21 @@ class UtilsTest {
   @Test
   fun deserializeShouldReturnErrorIfEmptyProfile() {
     val result: Result<Config> = deserialize("""{"profiles":[{}]}""")
-    assertThat(result.exceptionOrNull()).hasMessageContaining("Fields [name, root, include, exclude] are required")
+    assertThat(result.exceptionOrNull()).hasMessageContaining("Fields [name, root, include, ignore] are required")
   }
   @Test
   fun deserializeShouldReturnConfigIfProfileIncludeIsNotEmpty() {
-    val result: Result<Config> = deserialize("""{"profiles":[{"name":"name","root":"root","include":["a"],"exclude":[]}]}""")
+    val result: Result<Config> = deserialize("""{"profiles":[{"name":"name","root":"root","include":["a"],"ignore":[]}]}""")
     assertThat(result.exceptionOrNull()).isNull()
   }
   @Test
   fun deserializeShouldReturnConfigIfProfileIncludeProfilesIsNotEmpty() {
-    val result: Result<Config> = deserialize("""{"profiles":[{"name":"name","root":"root","include":[],"exclude":[],"includeProfiles":["a"]}]}""")
+    val result: Result<Config> = deserialize("""{"profiles":[{"name":"name","root":"root","include":[],"ignore":[],"includeProfiles":["a"]}]}""")
     assertThat(result.exceptionOrNull()).isNull()
   }
   @Test
   fun deserializeShouldReturnConfigIfProfileInheritProfilesIsNotEmpty() {
-    val result: Result<Config> = deserialize("""{"profiles":[{"name":"name","root":"root","include":[],"exclude":[],"inheritProfiles":["a"]}]}""")
+    val result: Result<Config> = deserialize("""{"profiles":[{"name":"name","root":"root","include":[],"ignore":[],"inheritProfiles":["a"]}]}""")
     assertThat(result.exceptionOrNull()).isNull()
   }
 }
