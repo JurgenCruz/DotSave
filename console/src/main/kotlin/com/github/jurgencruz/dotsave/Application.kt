@@ -12,6 +12,7 @@ import com.github.jurgencruz.dotsave.utils.deserialize
 import com.github.jurgencruz.dotsave.utils.flatMap
 import com.github.jurgencruz.dotsave.utils.toSafePath
 import java.nio.file.Path
+import kotlin.io.path.Path
 import kotlin.system.exitProcess
 
 /**
@@ -42,7 +43,7 @@ object Application {
 
   private fun backup(path: String, profile: String?, log: (LogLevel, String) -> Unit, printErrors: (ex: Throwable) -> Unit, dryRun: Boolean) {
     getConfig(path).flatMap { config ->
-      BackupHandler.backup(config, path, profile, log, if (dryRun) ::dryRunRecreateDir else LocalFileSystem::recreateDir, if (dryRun) ::dryRunCopy else LocalFileSystem::copy, LocalFileSystem::walk)
+      BackupHandler.backup(config, Path(path).parent!!, profile, log, if (dryRun) ::dryRunRecreateDir else LocalFileSystem::recreateDir, if (dryRun) ::dryRunCopy else LocalFileSystem::copy, LocalFileSystem::walk)
     }.onFailure {
       printErrors(it)
       exitProcess(2)
@@ -51,7 +52,7 @@ object Application {
 
   private fun restore(path: String, profile: String?, log: (LogLevel, String) -> Unit, printErrors: (ex: Throwable) -> Unit, dryRun: Boolean) {
     getConfig(path).flatMap { config ->
-      RestoreHandler.restore(config, path, profile, log, if (dryRun) ::dryRunCopy else LocalFileSystem::copy)
+      RestoreHandler.restore(config, Path(path).parent!!, profile, log, if (dryRun) ::dryRunCopy else LocalFileSystem::copy)
     }.onFailure {
       printErrors(it)
       exitProcess(3)
