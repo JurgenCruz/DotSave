@@ -11,6 +11,7 @@ import com.github.jurgencruz.dotsave.parse.ArgsParser
 import com.github.jurgencruz.dotsave.utils.deserialize
 import com.github.jurgencruz.dotsave.utils.flatMap
 import com.github.jurgencruz.dotsave.utils.toSafePath
+import java.nio.file.Path
 import kotlin.system.exitProcess
 
 /**
@@ -28,29 +29,29 @@ object Application {
       printErrors(it)
       printUsage()
       exitProcess(1)
-    }.onSuccess { (action, path, verbose, profile) ->
+    }.onSuccess { (action, path, verbose, profile, dryRun) ->
       val log = if (verbose) ConsoleLogger::verboseLog else ConsoleLogger::log
       when (action) {
         Action.USAGE   -> printUsage()
         Action.VERSION -> printVersion()
-        Action.BACKUP  -> backup(path, verbose, profile, log, printErrors)
-        Action.RESTORE -> restore(path, verbose, profile, log, printErrors)
+        Action.BACKUP  -> backup(path, profile, log, printErrors, dryRun)
+        Action.RESTORE -> restore(path, profile, log, printErrors, dryRun)
       }
     }
   }
 
-  private fun backup(path: String, verbose: Boolean, profile: String?, log: (LogLevel, String) -> Unit, printErrors: (ex: Throwable) -> Unit) {
+  private fun backup(path: String, profile: String?, log: (LogLevel, String) -> Unit, printErrors: (ex: Throwable) -> Unit, dryRun: Boolean) {
     getConfig(path).flatMap { config ->
-      BackupHandler.backup(config, path, profile, log, LocalFileSystem::recreateDir, LocalFileSystem::copy)
+      BackupHandler.backup(config, path, profile, log, if (dryRun) ::dryRunRecreateDir else LocalFileSystem::recreateDir, if (dryRun) ::dryRunCopy else LocalFileSystem::copy)
     }.onFailure {
       printErrors(it)
       exitProcess(2)
     }
   }
 
-  private fun restore(path: String, verbose: Boolean, profile: String?, log: (LogLevel, String) -> Unit, printErrors: (ex: Throwable) -> Unit) {
+  private fun restore(path: String, profile: String?, log: (LogLevel, String) -> Unit, printErrors: (ex: Throwable) -> Unit, dryRun: Boolean) {
     getConfig(path).flatMap { config ->
-      RestoreHandler.restore(config, path, profile, log, LocalFileSystem::copy)
+      RestoreHandler.restore(config, path, profile, log, if (dryRun) ::dryRunCopy else LocalFileSystem::copy)
     }.onFailure {
       printErrors(it)
       exitProcess(3)
@@ -59,6 +60,8 @@ object Application {
 
   private fun getConfig(path: String): Result<Config> = readConfig(path).flatMap(EnvVarReplacer::replaceEnvVars).flatMap(ConfigValidator::validate)
   private fun readConfig(path: String): Result<Config> = toSafePath(path).flatMap(LocalFileSystem::read).mapCatching(::deserialize)
+  private fun dryRunRecreateDir(path: Path) = Result.success(Unit)
+  private fun dryRunCopy(path: Path, path2: Path) = Result.success(Unit)
   private fun printUsage() {
     println("Usage:")
     println("    dotsave  <operation>")
@@ -71,6 +74,7 @@ object Application {
     println("    -b, --back-up <filepath> Back up the files according to the config file.")
     println("    -r, --restore <filepath> Restore the files according to the config file.")
     println("    -v, --verbose            Print extra information.")
+    println("    -d, --dry-run            Simulate operation without actually touching the filesystem")
     println("    -p, --profile            Select which profile to execute.")
   }
 

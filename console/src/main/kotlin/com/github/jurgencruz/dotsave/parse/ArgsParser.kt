@@ -11,6 +11,8 @@ object ArgsParser {
   private const val VERSION_LONG = "--version"
   private const val VERBOSE_SHORT = "-v"
   private const val VERBOSE_LONG = "--verbose"
+  private const val DRY_RUN_SHORT = "-d"
+  private const val DRY_RUN_LONG = "--dry-run"
   private const val BACKUP_SHORT = "-b"
   private const val BACKUP_LONG = "--back-up"
   private const val RESTORE_SHORT = "-r"
@@ -24,6 +26,7 @@ object ArgsParser {
    */
   fun parse(args: Array<String>): Result<ArgsParseResult> {
     var verbose = false
+    var dryRun = false
     var action = Action.USAGE
     var path = ""
     var profile: String? = null
@@ -37,18 +40,22 @@ object ArgsParser {
           if (action != Action.USAGE) {
             return Result.failure(Exception("You can only specify one action"))
           }
-          return Result.success(ArgsParseResult(Action.USAGE, "", false, null))
+          return Result.success(ArgsParseResult(Action.USAGE, "", false, null, false))
         }
 
         shouldShowVersion(arg) -> {
           if (action != Action.USAGE) {
             return Result.failure(Exception("You can only specify one action"))
           }
-          return Result.success(ArgsParseResult(Action.VERSION, "", false, null))
+          return Result.success(ArgsParseResult(Action.VERSION, "", false, null, false))
         }
 
         isVerbose(arg)         -> {
           verbose = true
+        }
+
+        isDryRun(arg)          -> {
+          dryRun = true
         }
 
         isSave(arg)            -> {
@@ -86,12 +93,13 @@ object ArgsParser {
         else                   -> return Result.failure(Exception("Unrecognized argument: $arg"))
       }
     }
-    return Result.success(ArgsParseResult(action, path, verbose, profile))
+    return Result.success(ArgsParseResult(action, path, verbose, profile, dryRun))
   }
 
   private fun shouldShowUsage(arg: String): Boolean = arg == HELP_SHORT || arg == HELP_LONG
   private fun shouldShowVersion(arg: String): Boolean = arg == VERSION_SHORT || arg == VERSION_LONG
   private fun isVerbose(arg: String): Boolean = arg == VERBOSE_SHORT || arg == VERBOSE_LONG
+  private fun isDryRun(arg: String): Boolean = arg == DRY_RUN_SHORT || arg == DRY_RUN_LONG
   private fun isSave(arg: String): Boolean = arg == BACKUP_SHORT || arg == BACKUP_LONG
   private fun isApply(arg: String): Boolean = arg == RESTORE_SHORT || arg == RESTORE_LONG
   private fun isProfileName(arg: String): Boolean = arg == PROFILE_SHORT || arg == PROFILE_LONG
