@@ -11,6 +11,7 @@ import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.name
+import kotlin.io.path.walk
 import kotlin.streams.asSequence
 
 /**
@@ -72,4 +73,6 @@ object LocalFileSystem {
       }
     }
   }
+
+  fun walk(path: Path): Sequence<Path> = path.walk()
 }

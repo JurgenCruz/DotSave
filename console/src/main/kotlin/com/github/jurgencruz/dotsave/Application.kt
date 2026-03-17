@@ -42,7 +42,7 @@ object Application {
 
   private fun backup(path: String, profile: String?, log: (LogLevel, String) -> Unit, printErrors: (ex: Throwable) -> Unit, dryRun: Boolean) {
     getConfig(path).flatMap { config ->
-      BackupHandler.backup(config, path, profile, log, if (dryRun) ::dryRunRecreateDir else LocalFileSystem::recreateDir, if (dryRun) ::dryRunCopy else LocalFileSystem::copy)
+      BackupHandler.backup(config, path, profile, log, if (dryRun) ::dryRunRecreateDir else LocalFileSystem::recreateDir, if (dryRun) ::dryRunCopy else LocalFileSystem::copy, LocalFileSystem::walk)
     }.onFailure {
       printErrors(it)
       exitProcess(2)
