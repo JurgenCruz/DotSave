@@ -16,7 +16,7 @@ import kotlin.io.path.Path
  * @param exclude List of files and directories to exclude in the backup. Used mainly to disable warnings about files not being backed up.
  */
 @Serializable
-data class Profile(val name: String, val default: Boolean, val root: String, val includeProfiles: List<String>, val inheritProfiles: List<String>, val include: List<String>, val exclude: List<String>) {
+data class Profile(val name: String, val root: String, val include: List<String>, val exclude: List<String>, val includeProfiles: List<String> = emptyList(), val inheritProfiles: List<String> = emptyList(), val default: Boolean = false) {
   companion object {
     fun mergeProfile(config: Config, profile: Profile): Result<Profile> {
       return profile.inheritProfiles.fold(Result.success(profile)) { profile, toInheritName ->
@@ -34,5 +34,15 @@ data class Profile(val name: String, val default: Boolean, val root: String, val
         }
       }
     }
+  }
+
+  fun validate() {
+    require(name.isNotBlank()) { "Profile name cannot be blank. If using Env Vars, make sure they have valid values." }
+    require(root.isNotBlank()) { "Root cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values." }
+    require(include.isNotEmpty() || includeProfiles.isNotEmpty() || inheritProfiles.isNotEmpty()) { "Either include, includeProfiles or inheritProfiles must include at least 1 item. Profile: $name." }
+    require(includeProfiles.all { it.isNotBlank() }) { "IncludeProfile items cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values." }
+    require(inheritProfiles.all { it.isNotBlank() }) { "InheritProfile items cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values." }
+    require(include.all { it.isNotBlank() }) { "Include items cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values." }
+    require(exclude.all { it.isNotBlank() }) { "Ignore items cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values." }
   }
 }

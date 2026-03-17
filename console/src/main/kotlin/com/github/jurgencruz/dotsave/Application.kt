@@ -1,7 +1,6 @@
 package com.github.jurgencruz.dotsave
 
 import com.github.jurgencruz.dotsave.config.Config
-import com.github.jurgencruz.dotsave.config.ConfigValidator
 import com.github.jurgencruz.dotsave.config.EnvVarReplacer
 import com.github.jurgencruz.dotsave.dataaccess.LocalFileSystem
 import com.github.jurgencruz.dotsave.logging.ConsoleLogger
@@ -41,26 +40,22 @@ object Application {
     }
   }
 
-  private fun backup(path: String, profile: String?, log: (LogLevel, String) -> Unit, printErrors: (ex: Throwable) -> Unit, dryRun: Boolean) {
-    getConfig(path).flatMap { config ->
-      BackupHandler.backup(config, Path(path).parent!!, profile, log, if (dryRun) ::dryRunRecreateDir else LocalFileSystem::recreateDir, if (dryRun) ::dryRunCopy else LocalFileSystem::copy, LocalFileSystem::walk)
-    }.onFailure {
-      printErrors(it)
-      exitProcess(2)
-    }
+  private fun backup(path: String, profile: String?, log: (LogLevel, String) -> Unit, printErrors: (ex: Throwable) -> Unit, dryRun: Boolean) = getConfig(path).flatMap { config ->
+    BackupHandler.backup(config, Path(path).parent!!, profile, log, if (dryRun) ::dryRunRecreateDir else LocalFileSystem::recreateDir, if (dryRun) ::dryRunCopy else LocalFileSystem::copy, LocalFileSystem::walk)
+  }.onFailure {
+    printErrors(it)
+    exitProcess(2)
   }
 
-  private fun restore(path: String, profile: String?, log: (LogLevel, String) -> Unit, printErrors: (ex: Throwable) -> Unit, dryRun: Boolean) {
-    getConfig(path).flatMap { config ->
-      RestoreHandler.restore(config, Path(path).parent!!, profile, log, if (dryRun) ::dryRunCopy else LocalFileSystem::copy)
-    }.onFailure {
-      printErrors(it)
-      exitProcess(3)
-    }
+  private fun restore(path: String, profile: String?, log: (LogLevel, String) -> Unit, printErrors: (ex: Throwable) -> Unit, dryRun: Boolean) = getConfig(path).flatMap { config ->
+    RestoreHandler.restore(config, Path(path).parent!!, profile, log, if (dryRun) ::dryRunCopy else LocalFileSystem::copy)
+  }.onFailure {
+    printErrors(it)
+    exitProcess(3)
   }
 
-  private fun getConfig(path: String): Result<Config> = readConfig(path).flatMap(EnvVarReplacer::replaceEnvVars).flatMap(ConfigValidator::validate)
-  private fun readConfig(path: String): Result<Config> = toSafePath(path).flatMap(LocalFileSystem::read).mapCatching(::deserialize)
+  private fun getConfig(path: String) = readConfig(path).flatMap(EnvVarReplacer::replaceEnvVars).mapCatching { it.apply { validate() } }
+  private fun readConfig(path: String) = toSafePath(path).flatMap(LocalFileSystem::read).flatMap<Config, String>(::deserialize)
   private fun dryRunRecreateDir(path: Path) = Result.success(Unit)
   private fun dryRunCopy(path: Path, path2: Path) = Result.success(Unit)
   private fun printUsage() {

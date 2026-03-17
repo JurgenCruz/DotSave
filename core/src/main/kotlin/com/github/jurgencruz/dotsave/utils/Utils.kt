@@ -50,4 +50,6 @@ fun <T> Sequence<Result<T>>.mergeFailures(): Result<List<T>> {
   }
 }
 
-inline fun <reified T> deserialize(string: String): T = Json.decodeFromString<T>(string)
+inline fun <reified T> deserialize(string: String): Result<T> = runCatching {
+  Json.decodeFromString<T>(string)
+}

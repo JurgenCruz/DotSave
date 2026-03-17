@@ -16,16 +16,16 @@ object EnvVarReplacer {
    * @return A result object that has the new config file with replaced environments or an error if it failed.
    */
   fun replaceEnvVars(config: Config) = config.profiles.asSequence().map(::replaceEnvVars).mergeFailures().map { config.copy(profiles = it) }
-  private fun replaceEnvVars(profile: Profile) = replace(profile.name).map { profile.copy(name = it.trim()) }.flatMap { p ->
+  private fun replaceEnvVars(profile: Profile) = replace(profile.name).map { profile.copy(name = it) }.flatMap { p ->
     replace(p.root).map { p.copy(root = it) }
   }.flatMap { p ->
-    replaceEnvVars(p.includeProfiles).map { p.copy(includeProfiles = it) }
+    replaceAllItemsOnList(p.includeProfiles).map { p.copy(includeProfiles = it) }
   }.flatMap { p ->
-    replaceEnvVars(p.inheritProfiles).map { p.copy(inheritProfiles = it) }
+    replaceAllItemsOnList(p.inheritProfiles).map { p.copy(inheritProfiles = it) }
   }.flatMap { p ->
-    replaceEnvVars(p.include).map { p.copy(include = it) }
+    replaceAllItemsOnList(p.include).map { p.copy(include = it) }
   }.flatMap { p ->
-    replaceEnvVars(p.exclude).map { p.copy(exclude = it) }
+    replaceAllItemsOnList(p.exclude).map { p.copy(exclude = it) }
   }
 
   private fun replace(string: String) = runCatching {
@@ -34,14 +34,6 @@ object EnvVarReplacer {
     }
   }
 
-  private fun replaceEnvVars(list: List<String>) = list.asSequence().map(::replaceMandatory).mergeFailures()
-  private fun replaceMandatory(string: String) = replace(string).map(String::trim).flatMap {
-    if (it.isBlank()) {
-      Result.failure(IllegalStateException("Value cannot be blank"))
-    } else {
-      Result.success(it)
-    }
-  }
-
+  private fun replaceAllItemsOnList(list: List<String>) = list.asSequence().map(::replace).mergeFailures()
   private fun getEnvVar(varName: String) = System.getenv(varName) ?: ""
 }
