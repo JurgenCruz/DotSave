@@ -16,7 +16,7 @@ import kotlin.io.path.Path
  * @param ignore List of files and directories to ignore in the backup. Used mainly to disable warnings about files not being backed up.
  */
 @Serializable
-data class Profile(val name: String, val root: String, val include: List<String>, val ignore: List<String>, val includeProfiles: List<String> = emptyList(), val inheritProfiles: List<String> = emptyList(), val default: Boolean = false) {
+data class Profile(val name: String, val root: String, val include: List<String> = emptyList(), val ignore: List<String> = emptyList(), val includeProfiles: List<String> = emptyList(), val inheritProfiles: List<String> = emptyList(), val default: Boolean = false) {
   companion object {
     fun mergeProfile(config: Config, profile: Profile): Result<Profile> {
       return profile.inheritProfiles.fold(Result.success(profile)) { profile, toInheritName ->
@@ -39,7 +39,7 @@ data class Profile(val name: String, val root: String, val include: List<String>
   fun validate() {
     require(name.isNotBlank()) { "Profile name cannot be blank. If using Env Vars, make sure they have valid values." }
     require(root.isNotBlank()) { "Root cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values." }
-    require(include.isNotEmpty() || includeProfiles.isNotEmpty() || inheritProfiles.isNotEmpty()) { "Either include, includeProfiles or inheritProfiles must include at least 1 item. Profile: $name." }
+    require(include.isNotEmpty() || ignore.isNotEmpty() || includeProfiles.isNotEmpty() || inheritProfiles.isNotEmpty()) { "Either include, ignore, includeProfiles or inheritProfiles must include at least 1 item. Profile: $name." }
     require(includeProfiles.all { it.isNotBlank() }) { "IncludeProfile items cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values." }
     require(inheritProfiles.all { it.isNotBlank() }) { "InheritProfile items cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values." }
     require(include.all { it.isNotBlank() }) { "Include items cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values." }

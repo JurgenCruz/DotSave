@@ -6,37 +6,37 @@ import org.junit.jupiter.api.Test
 class ProfileTest {
   @Test
   fun validateShouldReturnErrorIfNameIsEmpty() {
-    val profile = Profile("", "", emptyList(), emptyList())
+    val profile = Profile("", "")
     val result = runCatching { profile.validate() }
     assertThat(result.exceptionOrNull()).hasMessage("Profile name cannot be blank. If using Env Vars, make sure they have valid values.")
   }
   @Test
   fun validateShouldReturnErrorIfRootIsEmpty() {
-    val profile = Profile("name", "", emptyList(), emptyList())
+    val profile = Profile("name", "")
     val result = runCatching { profile.validate() }
     assertThat(result.exceptionOrNull()).hasMessage("Root cannot be blank. Profile: name. If using Env Vars, make sure they have valid values.")
   }
   @Test
-  fun validateShouldReturnErrorIfIncludeAndIncludeProfilesAndInheritProfilesAreEmpty() {
-    val profile = Profile("name", "root", emptyList(), emptyList())
+  fun validateShouldReturnErrorIfIncludeAndIgnoreAndIncludeProfilesAndInheritProfilesAreEmpty() {
+    val profile = Profile("name", "root")
     val result = runCatching { profile.validate() }
-    assertThat(result.exceptionOrNull()).hasMessage("Either include, includeProfiles or inheritProfiles must include at least 1 item. Profile: name.")
+    assertThat(result.exceptionOrNull()).hasMessage("Either include, ignore, includeProfiles or inheritProfiles must include at least 1 item. Profile: name.")
   }
   @Test
   fun validateShouldReturnErrorIfIncludeItemIsEmpty() {
-    val profile = Profile("name", "root", listOf(""), emptyList())
+    val profile = Profile("name", "root", listOf(""))
     val result = runCatching { profile.validate() }
     assertThat(result.exceptionOrNull()).hasMessage("Include items cannot be blank. Profile: name. If using Env Vars, make sure they have valid values.")
   }
   @Test
   fun validateShouldReturnErrorIfIncludeProfilesItemIsEmpty() {
-    val profile = Profile("name", "root", emptyList(), emptyList(), listOf(""))
+    val profile = Profile("name", "root", includeProfiles = listOf(""))
     val result = runCatching { profile.validate() }
     assertThat(result.exceptionOrNull()).hasMessage("IncludeProfile items cannot be blank. Profile: name. If using Env Vars, make sure they have valid values.")
   }
   @Test
   fun validateShouldReturnErrorIfInheritProfilesItemIsEmpty() {
-    val profile = Profile("name", "root", emptyList(), emptyList(), inheritProfiles = listOf(""))
+    val profile = Profile("name", "root", inheritProfiles = listOf(""))
     val result = runCatching { profile.validate() }
     assertThat(result.exceptionOrNull()).hasMessage("InheritProfile items cannot be blank. Profile: name. If using Env Vars, make sure they have valid values.")
   }
@@ -48,7 +48,7 @@ class ProfileTest {
   }
   @Test
   fun validateShouldReturnNoErrorIfValid() {
-    val profile = Profile("name", "root", listOf("a"), emptyList())
+    val profile = Profile("name", "root", listOf("a"))
     val result = runCatching { profile.validate() }
     assertThat(result.exceptionOrNull()).isNull()
   }

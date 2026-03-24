@@ -18,7 +18,7 @@ class UtilsTest {
   @Test
   fun deserializeShouldReturnErrorIfEmptyProfile() {
     val result: Result<Config> = deserialize("""{"profiles":[{}]}""")
-    assertThat(result.exceptionOrNull()).hasMessageContaining("Fields [name, root, include, ignore] are required")
+    assertThat(result.exceptionOrNull()).hasMessageContaining("Fields [name, root] are required")
   }
   @Test
   fun deserializeShouldReturnConfigIfProfileIncludeIsNotEmpty() {
