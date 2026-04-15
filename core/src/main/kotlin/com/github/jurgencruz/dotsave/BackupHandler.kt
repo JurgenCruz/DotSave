@@ -24,7 +24,15 @@ object BackupHandler {
    * @param copy function to copy a file from path a to path b.
    * @return A result object with the list of missing files if successful or exception if failure.
    */
-  fun backup(config: Config, profile: Profile, backupPath: Path, log: (LogLevel, String) -> Unit, recreateDir: (Path) -> Result<Unit>, copy: (Path, Path) -> Result<Unit>, walk: (Path) -> Sequence<Path>): Result<List<String>> = Profile.mergeProfile(config, profile).flatMap { p ->
+  fun backup(
+    config: Config,
+    profile: Profile,
+    backupPath: Path,
+    log: (LogLevel, String) -> Unit,
+    recreateDir: (Path) -> Result<Unit>,
+    copy: (Path, Path) -> Result<Unit>,
+    walk: (Path) -> Sequence<Path>
+  ): Result<List<String>> = Profile.mergeProfile(config, profile).flatMap { p ->
     runIncludedProfiles(p, config, backupPath, log, recreateDir, copy, walk).map { p to it }
   }.flatMap { (p, missing) ->
     runCatching { backupPath.resolve(p.name) to (p to missing) }
@@ -32,7 +40,7 @@ object BackupHandler {
     log(LogLevel.INFO, "Recreating directory: $path")
   }.flatMap { (path, p) ->
     recreateDir(path).map { p }
-  }.onSuccess { (p) ->
+  }.onSuccess { (p, _) ->
     log(LogLevel.INFO, "Backing up profile: ${p.name}")
   }.map { (profile, missingFiles) ->
     calculateMissingFiles(profile, missingFiles, walk) to profile
@@ -40,8 +48,42 @@ object BackupHandler {
     backupFiles(profile, backupPath, log, copy).map { missingFiles }
   }
 
-  private fun calculateMissingFiles(profile: Profile, existingMissingFiles: List<String>, walk: (Path) -> Sequence<Path>) = walk(Path(profile.root)).map { "$it" }.toMutableSet().also { it.addAll(existingMissingFiles) }.filter { !profile.ignore.map { "${Path(profile.root, it)}" }.contains(it) } // TODO: change contains to look at directories
-  private fun backupFiles(profile: Profile, backupPath: Path, log: (LogLevel, String) -> Unit, copy: (Path, Path) -> Result<Unit>): Result<Unit> = profile.include.asSequence().map { f ->
+  private fun calculateMissingFiles(
+    profile: Profile,
+    existingMissingFiles: List<String>,
+    walk: (Path) -> Sequence<Path>
+  ) = walk(Path(profile.root)).map { "$it" }.toMutableSet().also { it.addAll(existingMissingFiles) }.filter {
+    notIncludedOrIgnored(profile, it)
+  }
+
+  private fun notIncludedOrIgnored(profile: Profile, file: String): Boolean {
+    val (ignoredFiles, ignoredDirs) = getFilesAndDirs(profile.ignore, profile)
+    val (includedFiles, includedDirs) = getFilesAndDirs(profile.include, profile)
+    return !(ignoredFiles.contains(file)
+        || ignoredDirs.any { file.startsWith(it) }
+        || includedFiles.contains(file)
+        || includedDirs.any { file.startsWith(it) })
+  }
+
+  private fun getFilesAndDirs(list: List<String>, profile: Profile): Pair<List<String>, List<String>> {
+    val files = mutableListOf<String>()
+    val dirs = mutableListOf<String>()
+    list.forEach {
+      if (it.endsWith("/")) {
+        dirs.add("${Path(profile.root, it)}/")
+      } else {
+        files.add("${Path(profile.root, it)}")
+      }
+    }
+    return files to dirs
+  }
+
+  private fun backupFiles(
+    profile: Profile,
+    backupPath: Path,
+    log: (LogLevel, String) -> Unit,
+    copy: (Path, Path) -> Result<Unit>
+  ): Result<Unit> = profile.include.asSequence().map { f ->
     toSafePath(profile.root, f).flatMap { path ->
       runCatching {
         path to backupPath.resolve(profile.name).resolve(f)
@@ -53,7 +95,15 @@ object BackupHandler {
     }
   }.mergeFailures().map { }
 
-  private fun runIncludedProfiles(profile: Profile, config: Config, backupPath: Path, log: (LogLevel, String) -> Unit, recreateDir: (Path) -> Result<Unit>, copy: (Path, Path) -> Result<Unit>, walk: (Path) -> Sequence<Path>) = profile.includeProfiles.asSequence().map { name ->
+  private fun runIncludedProfiles(
+    profile: Profile,
+    config: Config,
+    backupPath: Path,
+    log: (LogLevel, String) -> Unit,
+    recreateDir: (Path) -> Result<Unit>,
+    copy: (Path, Path) -> Result<Unit>,
+    walk: (Path) -> Sequence<Path>
+  ) = profile.includeProfiles.asSequence().map { name ->
     backup(config, config.profiles.first { (n) -> n == name }, backupPath, log, recreateDir, copy, walk)
   }.mergeFailures().map { it.flatten() }
 }
