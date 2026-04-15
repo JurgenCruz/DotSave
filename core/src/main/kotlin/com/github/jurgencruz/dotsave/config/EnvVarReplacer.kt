@@ -10,6 +10,7 @@ import com.github.jurgencruz.dotsave.utils.mergeFailures
 object EnvVarReplacer {
   private val regex = Regex("\\$(?<name>\\{[A-Za-z_]\\w+}|[A-Za-z_]\\w+)") // NON-NLS
   internal var getEnv: (String) -> String = ::getEnvVar
+
   /**
    * Replaces all Environment Variables in the config including in name, root, includeProfiles, inheritProfiles, include and ignore.
    * @param config The config to replace Env Vars on.

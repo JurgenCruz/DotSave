@@ -7,6 +7,7 @@ package com.github.jurgencruz.dotsave.logging
 object ConsoleLogger {
   private const val RED = "\u001b[31m"
   private const val RESET = "\u001b[0m"
+
   /**
    * Log a message always.
    * @param level The level of the message.
@@ -19,6 +20,7 @@ object ConsoleLogger {
       println(msg)
     }
   }
+
   /**
    * Log a message only if it is an error.
    * @param level The level of the message.

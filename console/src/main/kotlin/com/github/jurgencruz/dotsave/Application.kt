@@ -40,7 +40,15 @@ object Application {
 
   private fun backup(configFilePath: String, profileName: String?, log: (LogLevel, String) -> Unit, dryRun: Boolean) {
     getContext(configFilePath, profileName).flatMap { (path, config, profile) ->
-      BackupHandler.backup(config, profile, path, log, if (dryRun) ::dryRunRecreateDir else LocalFileSystem::recreateDir, if (dryRun) ::dryRunCopy else LocalFileSystem::copy, LocalFileSystem::walk)
+      BackupHandler.backup(
+        config,
+        profile,
+        path,
+        log,
+        if (dryRun) ::dryRunRecreateDir else LocalFileSystem::recreateDir,
+        if (dryRun) ::dryRunCopy else LocalFileSystem::copy,
+        LocalFileSystem::walk
+      )
     }.fold({
       printMissingFiles(it)
     }, {

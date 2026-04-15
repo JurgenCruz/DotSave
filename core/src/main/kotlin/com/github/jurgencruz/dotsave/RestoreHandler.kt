@@ -22,7 +22,13 @@ object RestoreHandler {
    * @param copy function to copy a file from path a to path b.
    * @return A result object to signal if there were any errors.
    */
-  fun restore(config: Config, profile: Profile, backupPath: Path, log: (LogLevel, String) -> Unit, copy: (Path, Path) -> Result<Unit>): Result<Unit> {
+  fun restore(
+    config: Config,
+    profile: Profile,
+    backupPath: Path,
+    log: (LogLevel, String) -> Unit,
+    copy: (Path, Path) -> Result<Unit>
+  ): Result<Unit> {
     return Profile.mergeProfile(config, profile).flatMap { p ->
       runIncludedProfiles(p, config, backupPath, log, copy).map { p }
     }.onSuccess { p ->
@@ -32,7 +38,12 @@ object RestoreHandler {
     }
   }
 
-  private fun restoreFiles(profile: Profile, backupPath: Path, log: (LogLevel, String) -> Unit, copy: (Path, Path) -> Result<Unit>) = profile.include.asSequence().map { f ->
+  private fun restoreFiles(
+    profile: Profile,
+    backupPath: Path,
+    log: (LogLevel, String) -> Unit,
+    copy: (Path, Path) -> Result<Unit>
+  ) = profile.include.asSequence().map { f ->
     toSafePath(profile.root, f).flatMap { path ->
       runCatching {
         path to backupPath.resolve(profile.name).resolve(f)
@@ -44,7 +55,13 @@ object RestoreHandler {
     }
   }.mergeFailures().map { }
 
-  private fun runIncludedProfiles(profile: Profile, config: Config, backupPath: Path, log: (LogLevel, String) -> Unit, copy: (Path, Path) -> Result<Unit>): Result<Unit> = profile.includeProfiles.asSequence().map { name ->
+  private fun runIncludedProfiles(
+    profile: Profile,
+    config: Config,
+    backupPath: Path,
+    log: (LogLevel, String) -> Unit,
+    copy: (Path, Path) -> Result<Unit>
+  ): Result<Unit> = profile.includeProfiles.asSequence().map { name ->
     restore(config, config.profiles.first { (n) -> n == name }, backupPath, log, copy)
   }.mergeFailures().map { }
 }

@@ -19,6 +19,7 @@ object ArgsParser {
   private const val RESTORE_LONG = "--restore"
   private const val PROFILE_SHORT = "-p"
   private const val PROFILE_LONG = "--profile"
+
   /**
    * Parse the console arguments.
    * @param args The console arguments to parse.

@@ -12,13 +12,7 @@ class EnvVarReplacerTest {
       EnvVarReplacer.getEnv = ::mockGetEnv
     }
 
-    fun mockGetEnv(varName: String): String {
-      return if (varName == "exception") {
-        throw SecurityException("fail")
-      } else {
-        "(replaced-$varName)"
-      }
-    }
+    fun mockGetEnv(varName: String) = if (varName != "exception") "(replaced-$varName)" else throw SecurityException("fail")
   }
 
   @Test

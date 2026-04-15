@@ -16,7 +16,15 @@ import kotlin.io.path.Path
  * @param ignore List of files and directories to ignore in the backup. Used mainly to disable warnings about files not being backed up.
  */
 @Serializable
-data class Profile(val name: String, val root: String, val include: List<String> = emptyList(), val ignore: List<String> = emptyList(), val includeProfiles: List<String> = emptyList(), val inheritProfiles: List<String> = emptyList(), val default: Boolean = false) {
+data class Profile(
+  val name: String,
+  val root: String,
+  val include: List<String> = emptyList(),
+  val ignore: List<String> = emptyList(),
+  val includeProfiles: List<String> = emptyList(),
+  val inheritProfiles: List<String> = emptyList(),
+  val default: Boolean = false
+) {
   companion object {
     fun mergeProfile(config: Config, profile: Profile): Result<Profile> {
       return profile.inheritProfiles.fold(Result.success(profile)) { profile, toInheritName ->

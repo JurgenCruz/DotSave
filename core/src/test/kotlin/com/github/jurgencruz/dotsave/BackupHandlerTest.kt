@@ -25,7 +25,8 @@ class BackupHandlerTest {
     assertThat(copyList).hasSize(2)
     assertThat(copyList).zipSatisfy(
       listOf(
-        "root1/file1" to "backup/program1/file1", "root1/folder2" to "backup/program1/folder2"
+        "root1/file1" to "backup/program1/file1",
+        "root1/folder2" to "backup/program1/folder2"
       )
     ) { (srcPath, destPath), (expectedSrc, expectedDest) ->
       assertThat(srcPath).hasToString(expectedSrc)
@@ -118,9 +119,7 @@ class BackupHandlerTest {
   fun backupShouldMergeInheritedProfiles() {
     val config = Config(
       listOf(
-        Profile(
-          "program1", "root1", listOf("file1", "folder2/"), listOf("missing1", "missing2"), inheritProfiles = listOf("inherit1")
-        ),
+        Profile("program1", "root1", listOf("file1", "folder2/"), listOf("missing1", "missing2"), inheritProfiles = listOf("inherit1")),
         Profile("inherit1", "root1/sub2", listOf("file3", "folder4/"), includeProfiles = listOf("include1")),
         Profile("include1", "root3", listOf("file5", "folder6/"))
       )

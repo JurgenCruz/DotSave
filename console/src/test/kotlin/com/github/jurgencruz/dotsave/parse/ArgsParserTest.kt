@@ -9,6 +9,7 @@ class ArgsParserTest {
     val result = ArgsParser.parse(arrayOf("-x"))
     assertThat(result.exceptionOrNull()).hasMessage("Unrecognized argument: -x")
   }
+
   @Test
   fun parseResultActionShouldBeShowUsageIfNoOptions() {
     val result = ArgsParser.parse(emptyArray())
@@ -18,6 +19,7 @@ class ArgsParserTest {
     assertThat(result.getOrThrow().profile).isNull()
     assertThat(result.getOrThrow().verbose).isFalse()
   }
+
   @Test
   fun parseResultActionShouldBeShowUsageIfNoActions() {
     val result = ArgsParser.parse(arrayOf("-v", "-p", "profile"))
@@ -27,6 +29,7 @@ class ArgsParserTest {
     assertThat(result.getOrThrow().profile).isEqualTo("profile")
     assertThat(result.getOrThrow().verbose).isTrue()
   }
+
   @Test
   fun parseResultActionShouldBeShowUsageIfSpecifiedFirst() {
     var result = ArgsParser.parse(arrayOf("-h"))
@@ -48,6 +51,7 @@ class ArgsParserTest {
     assertThat(result.getOrThrow().profile).isNull()
     assertThat(result.getOrThrow().verbose).isFalse()
   }
+
   @Test
   fun parseResultActionShouldBeShowVersionIfSpecifiedFirst() {
     var result = ArgsParser.parse(arrayOf("-V"))
@@ -69,6 +73,7 @@ class ArgsParserTest {
     assertThat(result.getOrThrow().profile).isNull()
     assertThat(result.getOrThrow().verbose).isFalse()
   }
+
   @Test
   fun parseResultActionShouldBeErrorIfNoSavePathSpecified() {
     var result = ArgsParser.parse(arrayOf("-b"))
@@ -76,6 +81,7 @@ class ArgsParserTest {
     result = ArgsParser.parse(arrayOf("--back-up"))
     assertThat(result.exceptionOrNull()).hasMessage("No path specified for saving")
   }
+
   @Test
   fun parseResultActionShouldBeSaveIfSaveSpecifiedAndConfPathSpecified() {
     var result = ArgsParser.parse(arrayOf("-b", "path1"))
@@ -91,6 +97,7 @@ class ArgsParserTest {
     assertThat(result.getOrThrow().profile).isNull()
     assertThat(result.getOrThrow().verbose).isFalse()
   }
+
   @Test
   fun parseResultActionShouldBeErrorIfNoApplyPathSpecified() {
     var result = ArgsParser.parse(arrayOf("-r"))
@@ -98,6 +105,7 @@ class ArgsParserTest {
     result = ArgsParser.parse(arrayOf("--restore"))
     assertThat(result.exceptionOrNull()).hasMessage("No path specified for restoring")
   }
+
   @Test
   fun parseResultActionShouldBeApplyIfApplySpecifiedAndConfPathSpecified() {
     var result = ArgsParser.parse(arrayOf("-r", "path1"))
@@ -109,6 +117,7 @@ class ArgsParserTest {
     assertThat(result.getOrThrow().action).isEqualTo(Action.RESTORE)
     assertThat(result.getOrThrow().path).isEqualTo("path2")
   }
+
   @Test
   fun parseResultActionShouldBeErrorIfTwoActionsSpecified() {
     var result = ArgsParser.parse(arrayOf("-r", "path", "-b", "path"))
@@ -116,6 +125,7 @@ class ArgsParserTest {
     result = ArgsParser.parse(arrayOf("--back-up", "path", "--restore", "path"))
     assertThat(result.exceptionOrNull()).hasMessage("You can only specify one action")
   }
+
   @Test
   fun parseResultActionShouldBeErrorIfNoProfileSpecifiedAfterFlag() {
     var result = ArgsParser.parse(arrayOf("-b", "path1", "-p"))
@@ -123,6 +133,7 @@ class ArgsParserTest {
     result = ArgsParser.parse(arrayOf("--back-up", "path2", "--profile"))
     assertThat(result.exceptionOrNull()).hasMessage("No profile name specified")
   }
+
   @Test
   fun parseResultActionShouldSetProfileIfSpecified() {
     var result = ArgsParser.parse(arrayOf("-b", "path1", "-p", "profile1"))
@@ -138,6 +149,7 @@ class ArgsParserTest {
     assertThat(result.getOrThrow().verbose).isTrue()
     assertThat(result.getOrThrow().profile).isEqualTo("profile2")
   }
+
   @Test
   fun parseResultActionShouldSetVerboseIfBackupOrRestore() {
     var result = ArgsParser.parse(arrayOf("-b", "path1", "-v"))

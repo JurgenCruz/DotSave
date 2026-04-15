@@ -31,6 +31,7 @@ object LocalFileSystem {
       Result.failure(FileNotFoundException("file not found: $path"))
     }
   }
+
   /**
    * Delete and create a directory again to start fresh.
    * @param path The path of the directory to recreate.
@@ -47,6 +48,7 @@ object LocalFileSystem {
     }
     return runCatching { Files.createDirectories(path) }
   }
+
   /**
    * Copy a file or directory to the destination directory.
    * @param srcPath The path of the file or directory to copy.
@@ -60,7 +62,6 @@ object LocalFileSystem {
     return if (srcPath.isRegularFile()) {
       runCatching {
         Files.copy(srcPath, destPath, LinkOption.NOFOLLOW_LINKS, StandardCopyOption.COPY_ATTRIBUTES, StandardCopyOption.REPLACE_EXISTING)
-        Unit
       }
     } else {
       runCatching {

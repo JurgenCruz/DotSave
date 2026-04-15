@@ -17,7 +17,7 @@ data class Config(val profiles: List<Profile>) {
    * - Each profile in the list is valid.
    * - All profiles have unique names.
    * - There is at most one default profile.
-   * - All referenced include and inherit profiles exist within the configuration.
+   * - All included and inherited profiles exist within the configuration.
    */
   fun validate() {
     require(profiles.isNotEmpty()) { "No profiles found in configuration." }
@@ -32,6 +32,7 @@ data class Config(val profiles: List<Profile>) {
       }
     }) { "Profile references must exist" }
   }
+
   /**
    * Selects a profile from the configuration based on the provided profile name.
    *
