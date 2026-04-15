@@ -42,7 +42,7 @@ object Application {
     getContext(configFilePath, profileName).flatMap { (path, config, profile) ->
       BackupHandler.backup(config, profile, path, log, if (dryRun) ::dryRunRecreateDir else LocalFileSystem::recreateDir, if (dryRun) ::dryRunCopy else LocalFileSystem::copy, LocalFileSystem::walk)
     }.fold({
-      // TODO: Print list of missing files
+      printMissingFiles(it)
     }, {
       ConsoleLogger.printErrors(it)
       exitProcess(2)
@@ -68,6 +68,11 @@ object Application {
   private fun readConfig(path: Path) = LocalFileSystem.read(path).flatMap<Config, String>(::deserialize)
   private fun dryRunRecreateDir(path: Path) = Result.success(Unit)
   private fun dryRunCopy(path: Path, path2: Path) = Result.success(Unit)
+  private fun printMissingFiles(missingFiles: List<String>) {
+    println("The following files were found under the profile root folder and not marked up for backup or ignored. This could mean they are new files recently added. Please review and adjust your config:")
+    missingFiles.forEach { println("  - $it") }
+  }
+
   private fun printUsage() {
     println("Usage:")
     println("    dotsave  <operation>")
