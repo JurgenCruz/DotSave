@@ -22,8 +22,8 @@ class RestoreHandlerTest {
     assertThat(copyList).hasSize(2)
     assertThat(copyList).zipSatisfy(
       listOf(
-        "backup/program1/file1" to "root1/file1",
-        "backup/program1/folder2" to "root1/folder2"
+        "backup/program1/file1" to "/root1/file1",
+        "backup/program1/folder2" to "/root1/folder2"
       )
     ) { (srcPath, destPath), (expectedSrc, expectedDest) ->
       assertThat(srcPath).hasToString(expectedSrc)
@@ -41,7 +41,7 @@ class RestoreHandlerTest {
 
   @Test
   fun restoreShouldAggregateErrorsAndContinue() {
-    val config = Config(listOf(Profile("program1", "root1", listOf("file1", "folder2/", "file3", "folder4/"))))
+    val config = Config(listOf(Profile("program1", "/root1", listOf("file1", "folder2", "file3", "folder4"))))
     var i = 0
     val copy = { _: Path, _: Path -> Result.failure<Unit>(IllegalAccessException("test${++i}")) }
     val result = RestoreHandler.restore(config, config.profiles[0], backupPath, logStub, copy)
@@ -56,9 +56,9 @@ class RestoreHandlerTest {
   fun restoreShouldRunIncludedProfiles() {
     val config = Config(
       listOf(
-        Profile("program1", "root1", listOf("file1", "folder2/"), listOf("missing1"), listOf("include1")),
-        Profile("include1", "root2", listOf("file3", "folder4/"), listOf("missing1"), listOf("include2")),
-        Profile("include2", "root3", listOf("file5", "folder6/"), listOf("missing1"))
+        Profile("program1", "/root1", listOf("file1", "folder2"), listOf("missing1"), listOf("include1")),
+        Profile("include1", "/root2", listOf("file3", "folder4"), listOf("missing1"), listOf("include2")),
+        Profile("include2", "/root3", listOf("file5", "folder6"), listOf("missing1"))
       )
     )
     val copyList = mutableListOf<Pair<Path, Path>>()
@@ -68,12 +68,12 @@ class RestoreHandlerTest {
     assertThat(copyList).hasSize(6)
     assertThat(copyList).zipSatisfy(
       listOf(
-        "backup/include2/file5" to "root3/file5",
-        "backup/include2/folder6" to "root3/folder6",
-        "backup/include1/file3" to "root2/file3",
-        "backup/include1/folder4" to "root2/folder4",
-        "backup/program1/file1" to "root1/file1",
-        "backup/program1/folder2" to "root1/folder2"
+        "backup/include2/file5" to "/root3/file5",
+        "backup/include2/folder6" to "/root3/folder6",
+        "backup/include1/file3" to "/root2/file3",
+        "backup/include1/folder4" to "/root2/folder4",
+        "backup/program1/file1" to "/root1/file1",
+        "backup/program1/folder2" to "/root1/folder2"
       )
     ) { (srcPath, destPath), (expectedSrc, expectedDest) ->
       assertThat(srcPath).hasToString(expectedSrc)
@@ -85,9 +85,9 @@ class RestoreHandlerTest {
   fun restoreShouldMergeInheritedProfiles() {
     val config = Config(
       listOf(
-        Profile("program1", "root1", listOf("file1", "folder2/"), listOf("missing1", "missing2"), inheritProfiles = listOf("inherit1")),
-        Profile("inherit1", "root1/sub2", listOf("file3", "folder4/"), includeProfiles = listOf("include1")),
-        Profile("include1", "root3", listOf("file5", "folder6/"))
+        Profile("program1", "/root1", listOf("file1", "folder2"), listOf("missing1", "missing2"), inheritProfiles = listOf("inherit1")),
+        Profile("inherit1", "/root1/sub2", listOf("file3", "folder4"), includeProfiles = listOf("include1")),
+        Profile("include1", "/root3", listOf("file5", "folder6"))
       )
     )
     val copyList = mutableListOf<Pair<Path, Path>>()
@@ -97,12 +97,12 @@ class RestoreHandlerTest {
     assertThat(copyList).hasSize(6)
     assertThat(copyList).zipSatisfy(
       listOf(
-        "backup/include1/file5" to "root3/file5",
-        "backup/include1/folder6" to "root3/folder6",
-        "backup/program1/file1" to "root1/file1",
-        "backup/program1/folder2" to "root1/folder2",
-        "backup/program1/sub2/file3" to "root1/sub2/file3",
-        "backup/program1/sub2/folder4" to "root1/sub2/folder4"
+        "backup/include1/file5" to "/root3/file5",
+        "backup/include1/folder6" to "/root3/folder6",
+        "backup/program1/file1" to "/root1/file1",
+        "backup/program1/folder2" to "/root1/folder2",
+        "backup/program1/sub2/file3" to "/root1/sub2/file3",
+        "backup/program1/sub2/folder4" to "/root1/sub2/folder4"
       )
     ) { (srcPath, destPath), (expectedSrc, expectedDest) ->
       assertThat(srcPath).hasToString(expectedSrc)
@@ -110,6 +110,6 @@ class RestoreHandlerTest {
     }
   }
 
-  private fun getProfile1() = Profile("program1", "root1", listOf("file1", "folder2/"), listOf("ignore1", "ignore2/"))
-  private fun getProfile2() = Profile("program2", "root2", listOf("file3", "folder4/"))
+  private fun getProfile1() = Profile("program1", "/root1", listOf("file1", "folder2"), listOf("ignore1", "ignore2"))
+  private fun getProfile2() = Profile("program2", "/root2", listOf("file3", "folder4"))
 }

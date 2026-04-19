@@ -16,7 +16,10 @@ object EnvVarReplacer {
    * @param config The config to replace Env Vars on.
    * @return A result object that has the new config file with replaced environments or an error if it failed.
    */
-  fun replaceEnvVars(config: Config) = config.profiles.asSequence().map(::replaceEnvVars).mergeFailures().map { config.copy(profiles = it) }
+  fun replaceEnvVars(config: Config) = config.profiles.asSequence().map(::replaceEnvVars).mergeFailures().map {
+    config.copy(profiles = it)
+  }
+
   private fun replaceEnvVars(profile: Profile) = replace(profile.name).map { profile.copy(name = it) }.flatMap { p ->
     replace(p.root).map { p.copy(root = it) }
   }.flatMap { p ->

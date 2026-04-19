@@ -5,7 +5,6 @@ import com.github.jurgencruz.dotsave.config.Profile
 import com.github.jurgencruz.dotsave.logging.LogLevel
 import com.github.jurgencruz.dotsave.utils.flatMap
 import com.github.jurgencruz.dotsave.utils.mergeFailures
-import com.github.jurgencruz.dotsave.utils.toSafePath
 import java.nio.file.Path
 
 /**
@@ -43,17 +42,14 @@ object RestoreHandler {
     backupPath: Path,
     log: (LogLevel, String) -> Unit,
     copy: (Path, Path) -> Result<Unit>
-  ) = profile.include.asSequence().map { f ->
-    toSafePath(profile.root, f).flatMap { path ->
-      runCatching {
-        path to backupPath.resolve(profile.name).resolve(f)
-      }
-    }.onSuccess { (filePath, profileBackupPath) ->
-      log(LogLevel.INFO, "Copying '$profileBackupPath' to '$filePath'")
-    }.flatMap { (filePath, profileBackupPath) ->
-      copy(profileBackupPath, filePath)
-    }
-  }.mergeFailures().map { }
+  ) = backupPath.resolve(profile.name).let { bPath ->
+    profile.includePath.asSequence().map { inc ->
+      val srcPath = bPath.resolve(inc)
+      val desPath = profile.rootPath.resolve(inc)
+      log(LogLevel.INFO, "Copying '$srcPath' to '$desPath'")
+      copy(srcPath, desPath)
+    }.mergeFailures().map { }
+  }
 
   private fun runIncludedProfiles(
     profile: Profile,

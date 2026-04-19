@@ -5,9 +5,7 @@ import com.github.jurgencruz.dotsave.config.Profile
 import com.github.jurgencruz.dotsave.logging.LogLevel
 import com.github.jurgencruz.dotsave.utils.flatMap
 import com.github.jurgencruz.dotsave.utils.mergeFailures
-import com.github.jurgencruz.dotsave.utils.toSafePath
 import java.nio.file.Path
-import kotlin.io.path.Path
 
 /**
  * Handler for the backup process.
@@ -32,7 +30,7 @@ object BackupHandler {
     recreateDir: (Path) -> Result<Unit>,
     copy: (Path, Path) -> Result<Unit>,
     walk: (Path) -> Sequence<Path>
-  ): Result<List<String>> = Profile.mergeProfile(config, profile).flatMap { p ->
+  ): Result<List<Path>> = Profile.mergeProfile(config, profile).flatMap { p ->
     runIncludedProfiles(p, config, backupPath, log, recreateDir, copy, walk).map { p to it }
   }.flatMap { (p, missing) ->
     runCatching { backupPath.resolve(p.name) to (p to missing) }
@@ -50,50 +48,31 @@ object BackupHandler {
 
   private fun calculateMissingFiles(
     profile: Profile,
-    existingMissingFiles: List<String>,
+    existingMissingFiles: List<Path>,
     walk: (Path) -> Sequence<Path>
-  ) = walk(Path(profile.root)).map { "$it" }.toMutableSet().also { it.addAll(existingMissingFiles) }.filter {
+  ) = walk(profile.rootPath).toMutableSet().also { it.addAll(existingMissingFiles) }.filter {
     notIncludedOrIgnored(profile, it)
   }
 
-  private fun notIncludedOrIgnored(profile: Profile, file: String): Boolean {
-    val (ignoredFiles, ignoredDirs) = getFilesAndDirs(profile.ignore, profile)
-    val (includedFiles, includedDirs) = getFilesAndDirs(profile.include, profile)
-    return !(ignoredFiles.contains(file)
-        || ignoredDirs.any { file.startsWith(it) }
-        || includedFiles.contains(file)
-        || includedDirs.any { file.startsWith(it) })
-  }
+  private fun notIncludedOrIgnored(profile: Profile, file: Path) =
+    !(profile.ignorePath.any { isFileInItem(file, profile.rootPath, it) }
+        || profile.includePath.any { isFileInItem(file, profile.rootPath, it) })
 
-  private fun getFilesAndDirs(list: List<String>, profile: Profile): Pair<List<String>, List<String>> {
-    val files = mutableListOf<String>()
-    val dirs = mutableListOf<String>()
-    list.forEach {
-      if (it.endsWith("/")) {
-        dirs.add("${Path(profile.root, it)}/")
-      } else {
-        files.add("${Path(profile.root, it)}")
-      }
-    }
-    return files to dirs
-  }
+  private fun isFileInItem(file: Path, root: Path, path: Path): Boolean = file.startsWith(root.resolve(path))
 
   private fun backupFiles(
     profile: Profile,
     backupPath: Path,
     log: (LogLevel, String) -> Unit,
     copy: (Path, Path) -> Result<Unit>
-  ): Result<Unit> = profile.include.asSequence().map { f ->
-    toSafePath(profile.root, f).flatMap { path ->
-      runCatching {
-        path to backupPath.resolve(profile.name).resolve(f)
-      }
-    }.onSuccess { (filePath, profileBackupPath) ->
-      log(LogLevel.INFO, "Copying '$filePath' to '$profileBackupPath'")
-    }.flatMap { (filePath, profileBackupPath) ->
-      copy(filePath, profileBackupPath)
-    }
-  }.mergeFailures().map { }
+  ): Result<Unit> = backupPath.resolve(profile.name).let { bPath ->
+    profile.includePath.asSequence().map { inc ->
+      val srcPath = profile.rootPath.resolve(inc)
+      val desPath = bPath.resolve(inc)
+      log(LogLevel.INFO, "Copying '$srcPath' to '$desPath'")
+      copy(srcPath, desPath)
+    }.mergeFailures().map { }
+  }
 
   private fun runIncludedProfiles(
     profile: Profile,
