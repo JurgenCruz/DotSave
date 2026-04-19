@@ -29,8 +29,15 @@ object Application {
       when (action) {
         Action.USAGE   -> printUsage()
         Action.VERSION -> printVersion()
-        Action.BACKUP  -> backup(configFilePath, profileName, log, dryRun)
-        Action.RESTORE -> restore(configFilePath, profileName, log, dryRun)
+        Action.BACKUP  -> {
+          printFlags(verbose, dryRun, action, configFilePath, profileName)
+          backup(configFilePath, profileName, log, dryRun)
+        }
+
+        Action.RESTORE -> {
+          printFlags(verbose, dryRun, action, configFilePath, profileName)
+          restore(configFilePath, profileName, log, dryRun)
+        }
       }
     }, {
       ConsoleLogger.printErrors(it)
@@ -80,6 +87,16 @@ object Application {
   private fun printMissingFiles(missingFiles: List<Path>) {
     println("The following files were found under the profile root folder and not marked up for backup or ignored. This could mean they are new files recently added. Please review and adjust your config:")
     missingFiles.forEach { println("  - $it") }
+  }
+
+  private fun printFlags(verbose: Boolean, dryRun: Boolean, action: Action, configFilePath: String, profileName: String?) {
+    if (verbose) {
+      println("verbose mode: On")
+      println("dry run mode: ${if (dryRun) "On" else "Off"}")
+      println("action: $action")
+      println("config path: $configFilePath")
+      println("profile: ${profileName ?: "default"}")
+    }
   }
 
   private fun printUsage() {
