@@ -18,6 +18,7 @@ class ArgsParserTest {
     assertThat(result.getOrThrow().path).isEqualTo("")
     assertThat(result.getOrThrow().profile).isNull()
     assertThat(result.getOrThrow().verbose).isFalse()
+    assertThat(result.getOrThrow().dryRun).isFalse()
   }
 
   @Test
@@ -28,6 +29,7 @@ class ArgsParserTest {
     assertThat(result.getOrThrow().path).isEqualTo("")
     assertThat(result.getOrThrow().profile).isEqualTo("profile")
     assertThat(result.getOrThrow().verbose).isTrue()
+    assertThat(result.getOrThrow().dryRun).isFalse()
   }
 
   @Test
@@ -38,18 +40,21 @@ class ArgsParserTest {
     assertThat(result.getOrThrow().path).isEqualTo("")
     assertThat(result.getOrThrow().profile).isNull()
     assertThat(result.getOrThrow().verbose).isFalse()
+    assertThat(result.getOrThrow().dryRun).isFalse()
     result = ArgsParser.parse(arrayOf("--help"))
     assertThat(result.exceptionOrNull()).isNull()
     assertThat(result.getOrThrow().action).isEqualTo(Action.USAGE)
     assertThat(result.getOrThrow().path).isEqualTo("")
     assertThat(result.getOrThrow().profile).isNull()
     assertThat(result.getOrThrow().verbose).isFalse()
+    assertThat(result.getOrThrow().dryRun).isFalse()
     result = ArgsParser.parse(arrayOf("-h", "-V", "-b"))
     assertThat(result.exceptionOrNull()).isNull()
     assertThat(result.getOrThrow().action).isEqualTo(Action.USAGE)
     assertThat(result.getOrThrow().path).isEqualTo("")
     assertThat(result.getOrThrow().profile).isNull()
     assertThat(result.getOrThrow().verbose).isFalse()
+    assertThat(result.getOrThrow().dryRun).isFalse()
   }
 
   @Test
@@ -60,18 +65,21 @@ class ArgsParserTest {
     assertThat(result.getOrThrow().path).isEqualTo("")
     assertThat(result.getOrThrow().profile).isNull()
     assertThat(result.getOrThrow().verbose).isFalse()
+    assertThat(result.getOrThrow().dryRun).isFalse()
     result = ArgsParser.parse(arrayOf("--version"))
     assertThat(result.exceptionOrNull()).isNull()
     assertThat(result.getOrThrow().action).isEqualTo(Action.VERSION)
     assertThat(result.getOrThrow().path).isEqualTo("")
     assertThat(result.getOrThrow().profile).isNull()
     assertThat(result.getOrThrow().verbose).isFalse()
+    assertThat(result.getOrThrow().dryRun).isFalse()
     result = ArgsParser.parse(arrayOf("-V", "-h", "-b"))
     assertThat(result.exceptionOrNull()).isNull()
     assertThat(result.getOrThrow().action).isEqualTo(Action.VERSION)
     assertThat(result.getOrThrow().path).isEqualTo("")
     assertThat(result.getOrThrow().profile).isNull()
     assertThat(result.getOrThrow().verbose).isFalse()
+    assertThat(result.getOrThrow().dryRun).isFalse()
   }
 
   @Test
@@ -90,12 +98,14 @@ class ArgsParserTest {
     assertThat(result.getOrThrow().path).isEqualTo("path1")
     assertThat(result.getOrThrow().profile).isNull()
     assertThat(result.getOrThrow().verbose).isFalse()
+    assertThat(result.getOrThrow().dryRun).isFalse()
     result = ArgsParser.parse(arrayOf("--back-up", "path2"))
     assertThat(result.exceptionOrNull()).isNull()
     assertThat(result.getOrThrow().action).isEqualTo(Action.BACKUP)
     assertThat(result.getOrThrow().path).isEqualTo("path2")
     assertThat(result.getOrThrow().profile).isNull()
     assertThat(result.getOrThrow().verbose).isFalse()
+    assertThat(result.getOrThrow().dryRun).isFalse()
   }
 
   @Test
@@ -141,12 +151,14 @@ class ArgsParserTest {
     assertThat(result.getOrThrow().action).isEqualTo(Action.BACKUP)
     assertThat(result.getOrThrow().path).isEqualTo("path1")
     assertThat(result.getOrThrow().verbose).isFalse()
+    assertThat(result.getOrThrow().dryRun).isFalse()
     assertThat(result.getOrThrow().profile).isEqualTo("profile1")
     result = ArgsParser.parse(arrayOf("-r", "path2", "--profile", "profile2", "-v"))
     assertThat(result.exceptionOrNull()).isNull()
     assertThat(result.getOrThrow().action).isEqualTo(Action.RESTORE)
     assertThat(result.getOrThrow().path).isEqualTo("path2")
     assertThat(result.getOrThrow().verbose).isTrue()
+    assertThat(result.getOrThrow().dryRun).isFalse()
     assertThat(result.getOrThrow().profile).isEqualTo("profile2")
   }
 
@@ -157,12 +169,32 @@ class ArgsParserTest {
     assertThat(result.getOrThrow().action).isEqualTo(Action.BACKUP)
     assertThat(result.getOrThrow().path).isEqualTo("path1")
     assertThat(result.getOrThrow().verbose).isTrue()
+    assertThat(result.getOrThrow().dryRun).isFalse()
     assertThat(result.getOrThrow().profile).isNull()
     result = ArgsParser.parse(arrayOf("-r", "path2", "-v"))
     assertThat(result.exceptionOrNull()).isNull()
     assertThat(result.getOrThrow().action).isEqualTo(Action.RESTORE)
     assertThat(result.getOrThrow().path).isEqualTo("path2")
     assertThat(result.getOrThrow().verbose).isTrue()
+    assertThat(result.getOrThrow().dryRun).isFalse()
+    assertThat(result.getOrThrow().profile).isNull()
+  }
+
+  @Test
+  fun parseResultActionShouldSetDryRunIfBackupOrRestore() {
+    var result = ArgsParser.parse(arrayOf("-b", "path1", "-d"))
+    assertThat(result.exceptionOrNull()).isNull()
+    assertThat(result.getOrThrow().action).isEqualTo(Action.BACKUP)
+    assertThat(result.getOrThrow().path).isEqualTo("path1")
+    assertThat(result.getOrThrow().verbose).isFalse()
+    assertThat(result.getOrThrow().dryRun).isTrue()
+    assertThat(result.getOrThrow().profile).isNull()
+    result = ArgsParser.parse(arrayOf("-r", "path2", "-d"))
+    assertThat(result.exceptionOrNull()).isNull()
+    assertThat(result.getOrThrow().action).isEqualTo(Action.RESTORE)
+    assertThat(result.getOrThrow().path).isEqualTo("path2")
+    assertThat(result.getOrThrow().verbose).isFalse()
+    assertThat(result.getOrThrow().dryRun).isTrue()
     assertThat(result.getOrThrow().profile).isNull()
   }
 }
