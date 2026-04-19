@@ -25,25 +25,6 @@ data class Profile(
   val inheritProfiles: List<String> = emptyList(),
   val default: Boolean = false
 ) {
-  companion object {
-    fun mergeProfile(config: Config, profile: Profile): Result<Profile> {
-      return profile.inheritProfiles.fold(Result.success(profile)) { profile, toInheritName ->
-        profile.flatMap { profile ->
-          mergeProfile(config, config.profiles.first { (n) -> n == toInheritName }).map { it to profile }
-        }.map { (toInherit, profile) ->
-          val prefix = profile.rootPath.relativize(toInherit.rootPath)
-          val newInclude = profile.include.toMutableSet()
-          newInclude.addAll(toInherit.includePath.map { prefix.resolve(it).toString() })
-          val newIgnore = profile.ignore.toMutableSet()
-          newIgnore.addAll(toInherit.ignorePath.map { prefix.resolve(it).toString() })
-          val newIncludeProfiles = profile.includeProfiles.toMutableSet()
-          newIncludeProfiles.addAll(toInherit.includeProfiles)
-          profile.copy(include = newInclude.toList(), ignore = newIgnore.toList(), includeProfiles = newIncludeProfiles.toList())
-        }
-      }
-    }
-  }
-
   val rootPath by lazy {
     Path(root)
   }
@@ -52,6 +33,23 @@ data class Profile(
   }
   val ignorePath by lazy {
     ignore.map { Path(it) }
+  }
+
+  fun mergeInheritedProfiles(config: Config): Result<Profile> {
+    return inheritProfiles.fold(Result.success(this)) { profile, toInheritName ->
+      profile.flatMap { profile ->
+        config.profiles.first { (n) -> n == toInheritName }.mergeInheritedProfiles(config).map { it to profile }
+      }.map { (toInherit, profile) ->
+        val prefix = profile.rootPath.relativize(toInherit.rootPath)
+        val newInclude = profile.include.toMutableSet()
+        newInclude.addAll(toInherit.includePath.map { prefix.resolve(it).toString() })
+        val newIgnore = profile.ignore.toMutableSet()
+        newIgnore.addAll(toInherit.ignorePath.map { prefix.resolve(it).toString() })
+        val newIncludeProfiles = profile.includeProfiles.toMutableSet()
+        newIncludeProfiles.addAll(toInherit.includeProfiles)
+        profile.copy(include = newInclude.toList(), ignore = newIgnore.toList(), includeProfiles = newIncludeProfiles.toList())
+      }
+    }
   }
 
   fun validate() {

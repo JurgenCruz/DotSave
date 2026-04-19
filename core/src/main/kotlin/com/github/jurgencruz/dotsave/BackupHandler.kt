@@ -30,7 +30,7 @@ object BackupHandler {
     recreateDir: (Path) -> Result<Unit>,
     copy: (Path, Path) -> Result<Unit>,
     walk: (Path) -> Sequence<Path>
-  ): Result<List<Path>> = Profile.mergeProfile(config, profile).flatMap { p ->
+  ) = profile.mergeInheritedProfiles(config).flatMap { p ->
     runIncludedProfiles(p, config, backupPath, log, recreateDir, copy, walk).map { p to it }
   }.flatMap { (p, missing) ->
     runCatching { backupPath.resolve(p.name) to (p to missing) }
@@ -55,17 +55,19 @@ object BackupHandler {
   }
 
   private fun notIncludedOrIgnored(profile: Profile, file: Path) =
-    !(profile.ignorePath.any { isFileInItem(file, profile.rootPath, it) }
-        || profile.includePath.any { isFileInItem(file, profile.rootPath, it) })
+    !(isFileInList(profile.ignorePath, file, profile) || isFileInList(profile.includePath, file, profile))
 
-  private fun isFileInItem(file: Path, root: Path, path: Path): Boolean = file.startsWith(root.resolve(path))
+  private fun isFileInList(list: List<Path>, file: Path, profile: Profile): Boolean =
+    list.any {
+      file.startsWith(profile.rootPath.resolve(it))
+    }
 
   private fun backupFiles(
     profile: Profile,
     backupPath: Path,
     log: (LogLevel, String) -> Unit,
     copy: (Path, Path) -> Result<Unit>
-  ): Result<Unit> = backupPath.resolve(profile.name).let { bPath ->
+  ) = backupPath.resolve(profile.name).let { bPath ->
     profile.includePath.asSequence().map { inc ->
       val srcPath = profile.rootPath.resolve(inc)
       val desPath = bPath.resolve(inc)
@@ -82,7 +84,7 @@ object BackupHandler {
     recreateDir: (Path) -> Result<Unit>,
     copy: (Path, Path) -> Result<Unit>,
     walk: (Path) -> Sequence<Path>
-  ) = profile.includeProfiles.asSequence().map { name ->
+  ): Result<List<Path>> = profile.includeProfiles.asSequence().map { name ->
     backup(config, config.profiles.first { (n) -> n == name }, backupPath, log, recreateDir, copy, walk)
   }.mergeFailures().map { it.flatten() }
 }

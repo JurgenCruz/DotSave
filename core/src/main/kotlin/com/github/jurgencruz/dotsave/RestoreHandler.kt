@@ -27,14 +27,12 @@ object RestoreHandler {
     backupPath: Path,
     log: (LogLevel, String) -> Unit,
     copy: (Path, Path) -> Result<Unit>
-  ): Result<Unit> {
-    return Profile.mergeProfile(config, profile).flatMap { p ->
-      runIncludedProfiles(p, config, backupPath, log, copy).map { p }
-    }.onSuccess { p ->
-      log(LogLevel.INFO, "Restoring up profile: ${p.name}")
-    }.flatMap { p ->
-      restoreFiles(p, backupPath, log, copy)
-    }
+  ) = profile.mergeInheritedProfiles(config).flatMap { p ->
+    runIncludedProfiles(p, config, backupPath, log, copy).map { p }
+  }.onSuccess { p ->
+    log(LogLevel.INFO, "Restoring up profile: ${p.name}")
+  }.flatMap { p ->
+    restoreFiles(p, backupPath, log, copy)
   }
 
   private fun restoreFiles(
