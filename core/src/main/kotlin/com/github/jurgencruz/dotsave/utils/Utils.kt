@@ -4,6 +4,12 @@ import kotlinx.serialization.json.Json
 import java.nio.file.Path
 import kotlin.io.path.Path
 
+val sJson = Json {
+  ignoreUnknownKeys = true
+  allowTrailingComma = true
+  allowComments = true
+}
+
 /**
  * Helper that allows composing functions that return Result as well.
  * @param R The type of the resulting encapsulated value.
@@ -51,5 +57,5 @@ fun <T> Sequence<Result<T>>.mergeFailures(): Result<List<T>> {
 }
 
 inline fun <reified T> deserialize(string: String): Result<T> = runCatching {
-  Json.decodeFromString<T>(string)
+  sJson.decodeFromString<T>(string)
 }
