@@ -11,6 +11,7 @@ import com.github.jurgencruz.dotsave.utils.deserialize
 import com.github.jurgencruz.dotsave.utils.flatMap
 import com.github.jurgencruz.dotsave.utils.toSafePath
 import java.nio.file.Path
+import kotlin.io.path.absolute
 import kotlin.system.exitProcess
 
 /**
@@ -69,7 +70,7 @@ object Application {
   private fun getContext(configFilePath: String, profileName: String?) = toSafePath(configFilePath).flatMap { path ->
     getConfig(path).map { path to it }
   }.flatMap { (path, config) ->
-    config.selectProfile(profileName).map { profile -> Context(path.parent!!, config, profile) }
+    config.selectProfile(profileName).map { profile -> Context(path.absolute().parent, config, profile) }
   }
 
   private fun getConfig(path: Path) = readConfig(path).flatMap(EnvVarReplacer::replaceEnvVars).mapCatching { it.apply { validate() } }
