@@ -145,6 +145,14 @@ class ArgsParserTest {
   }
 
   @Test
+  fun parseResultActionShouldBeErrorIfThereAreTwoProfileFlags() {
+    var result = ArgsParser.parse(arrayOf("-b", "path1", "-p", "a", "-p", "b"))
+    assertThat(result.exceptionOrNull()).hasMessage("You can only specify one profile")
+    result = ArgsParser.parse(arrayOf("-b", "path1", "--profile", "a", "--profile", "b"))
+    assertThat(result.exceptionOrNull()).hasMessage("You can only specify one profile")
+  }
+
+  @Test
   fun parseResultActionShouldSetProfileIfSpecified() {
     var result = ArgsParser.parse(arrayOf("-b", "path1", "-p", "profile1"))
     assertThat(result.exceptionOrNull()).isNull()

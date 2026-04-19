@@ -84,6 +84,9 @@ object ArgsParser {
         }
 
         isProfileName(arg)     -> {
+          if (profile != null) {
+            return Result.failure(Exception("You can only specify one profile"))
+          }
           if (i >= args.size) {
             return Result.failure(Exception("No profile name specified"))
           }
