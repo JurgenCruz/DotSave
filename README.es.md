@@ -58,7 +58,7 @@ DotSave requiere que el JRE esté instalado en su sistema para funcionar. Consul
    > Si ignora un directorio y más tarde un archivo es agregado a ese directorio, la herramienta no podrá detectar esto. Asegúrese de que no serán agregados archivos o que los archivos agregados nunca serán relevantes.
 
    > [!NOTE]
-   > Note que la variable de entorno `HOME` fue usada en la propieda `root` del perfil. Durante la ejecución, la variable será evaluada y reemplazada. Puede usar variables de entorno en todas las propiedades de tipo cadena (string) con la notación `${NAME}`.
+   > Note que la variable de entorno `HOME` fue usada en la propiedad `root` del perfil. Durante la ejecución, la variable será evaluada y reemplazada. Puede usar variables de entorno en todas las propiedades de tipo cadena (string) con la notación `${NAME}`.
 
 3. ¡Ahora simplemente ejecute la herramienta con la opción `-b` para respaldar!
 
