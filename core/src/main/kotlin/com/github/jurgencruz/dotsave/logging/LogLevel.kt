@@ -10,6 +10,11 @@ enum class LogLevel {
   INFO,
 
   /**
+   * Warn level to log when something is not right but can continue.
+   */
+  WARN,
+
+  /**
    * Error level to log when something goes wrong.
    */
   ERROR

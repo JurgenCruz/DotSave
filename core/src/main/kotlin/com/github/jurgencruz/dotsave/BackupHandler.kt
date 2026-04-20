@@ -30,37 +30,55 @@ object BackupHandler {
     recreateDir: (Path) -> Result<Unit>,
     copy: (Path, Path) -> Result<Unit>,
     walk: (Path) -> Sequence<Path>
-  ) = profile.mergeInheritedProfiles(config).flatMap { p ->
-    runIncludedProfiles(p, config, backupPath, log, recreateDir, copy, walk).map { p to it }
-  }.flatMap { (p, missing) ->
-    runCatching { backupPath.resolve(p.name) to (p to missing) }
+  ) = backupWithLists(config, profile, backupPath, log, recreateDir, copy).map { (roots, copiedPaths, ignoredPaths) ->
+    calculateMissingFiles(roots, copiedPaths, ignoredPaths, walk)
+  }
+
+  private fun backupWithLists(
+    config: Config,
+    profile: Profile,
+    backupPath: Path,
+    log: (LogLevel, String) -> Unit,
+    recreateDir: (Path) -> Result<Unit>,
+    copy: (Path, Path) -> Result<Unit>
+  ): Result<Triple<MutableList<Path>, MutableSet<Path>, MutableSet<Path>>> = profile.mergeInheritedProfiles(config).flatMap { p ->
+    runIncludedProfiles(p, config, backupPath, log, recreateDir, copy).map { p to it }
+  }.flatMap { (p, lists) ->
+    runCatching { backupPath.resolve(p.name) to (p to lists) }
   }.onSuccess { (path) ->
     log(LogLevel.INFO, "Recreating directory: $path")
   }.flatMap { (path, p) ->
     recreateDir(path).map { p }
   }.onSuccess { (p, _) ->
     log(LogLevel.INFO, "Backing up profile: ${p.name}")
-  }.map { (profile, missingFiles) ->
-    calculateMissingFiles(profile, missingFiles, walk) to profile
-  }.flatMap { (missingFiles, profile) ->
-    backupFiles(profile, backupPath, log, copy).map { missingFiles }
+  }.flatMap { (profile, lists) ->
+    backupFiles(profile, backupPath, log, copy).map { new ->
+      calculateRootsAndFiles(
+        lists.first,
+        lists.second,
+        lists.third,
+        listOf(profile.rootPath),
+        new,
+        profile.ignorePath.map { profile.rootPath.resolve(it) },
+        log
+      )
+      lists
+    }
   }
 
   private fun calculateMissingFiles(
-    profile: Profile,
-    existingMissingFiles: List<Path>,
+    roots: MutableList<Path>,
+    copiedPaths: MutableSet<Path>,
+    ignoredPaths: MutableSet<Path>,
     walk: (Path) -> Sequence<Path>
-  ) = walk(profile.rootPath).toMutableSet().also { it.addAll(existingMissingFiles) }.filter {
-    notIncludedOrIgnored(profile, it)
+  ) = roots.flatMap {
+    walk(it).toList()
+  }.filter {
+    notIncludedOrIgnored(copiedPaths, ignoredPaths, it)
   }
 
-  private fun notIncludedOrIgnored(profile: Profile, file: Path) =
-    !(isFileInList(profile.ignorePath, file, profile) || isFileInList(profile.includePath, file, profile))
-
-  private fun isFileInList(list: List<Path>, file: Path, profile: Profile): Boolean =
-    list.any {
-      file.startsWith(profile.rootPath.resolve(it))
-    }
+  private fun notIncludedOrIgnored(copiedPaths: MutableSet<Path>, ignoredPaths: MutableSet<Path>, file: Path) =
+    !(ignoredPaths.any { file.startsWith(it) } || copiedPaths.any { file.startsWith(it) })
 
   private fun backupFiles(
     profile: Profile,
@@ -72,8 +90,8 @@ object BackupHandler {
       val srcPath = profile.rootPath.resolve(inc)
       val desPath = bPath.resolve(inc)
       log(LogLevel.INFO, "Copying '$srcPath' to '$desPath'")
-      copy(srcPath, desPath)
-    }.mergeFailures().map { }
+      copy(srcPath, desPath).map { srcPath }
+    }.mergeFailures()
   }
 
   private fun runIncludedProfiles(
@@ -82,9 +100,38 @@ object BackupHandler {
     backupPath: Path,
     log: (LogLevel, String) -> Unit,
     recreateDir: (Path) -> Result<Unit>,
-    copy: (Path, Path) -> Result<Unit>,
-    walk: (Path) -> Sequence<Path>
-  ): Result<List<Path>> = profile.includeProfiles.asSequence().map { name ->
-    backup(config, config.profiles.first { (n) -> n == name }, backupPath, log, recreateDir, copy, walk)
-  }.mergeFailures().map { it.flatten() }
+    copy: (Path, Path) -> Result<Unit>
+  ): Result<Triple<MutableList<Path>, MutableSet<Path>, MutableSet<Path>>> = profile.includeProfiles.asSequence().map { name ->
+    backupWithLists(config, config.profiles.first { (n) -> n == name }, backupPath, log, recreateDir, copy)
+  }.mergeFailures().map { list ->
+    val roots = mutableListOf<Path>()
+    val copiedPaths = mutableSetOf<Path>()
+    val ignoredPaths = mutableSetOf<Path>()
+    list.forEach { (r, c, i) ->
+      calculateRootsAndFiles(roots, copiedPaths, ignoredPaths, r, c.toList(), i.toList(), log)
+    }
+    Triple(roots, copiedPaths, ignoredPaths)
+  }
+
+  private fun calculateRootsAndFiles(
+    roots: MutableList<Path>,
+    copiedPaths: MutableSet<Path>,
+    ignoredPaths: MutableSet<Path>,
+    newRoots: List<Path>,
+    newCopiedPaths: List<Path>,
+    newIgnoredPaths: List<Path>,
+    log: (LogLevel, String) -> Unit
+  ) {
+    newRoots.forEach { newRoot ->
+      if (!roots.any { newRoot.startsWith(it) }) {
+        roots.add(newRoot)
+      }
+    }
+    newCopiedPaths.forEach {
+      if (!copiedPaths.add(it)) {
+        log(LogLevel.ERROR, "File '$it' is duplicated in the backup.")
+      }
+    }
+    ignoredPaths.addAll(newIgnoredPaths)
+  }
 }
