@@ -15,6 +15,7 @@ import kotlin.io.path.Path
  * @param include List of files and directories to include in the backup or restore.
  * @param ignore List of files and directories to ignore in the backup. Used mainly to disable warnings about files not being backed up.
  */
+@Suppress("HardCodedStringLiteral")
 @Serializable
 data class Profile(
   val name: String,
@@ -25,6 +26,11 @@ data class Profile(
   val inheritProfiles: List<String> = emptyList(),
   val default: Boolean = false
 ) {
+  companion object {
+    val sNameValidator = Regex("""^[a-zA-Z0-9_-]+$""")
+    val sPathValidator = Regex("""/\.{1,2}/|^\.{1,2}/""")
+  }
+
   val rootPath by lazy {
     Path(root)
   }
@@ -53,20 +59,52 @@ data class Profile(
   }
 
   fun validate() {
-    require(name.isNotBlank()) { "Profile name cannot be blank. If using Env Vars, make sure they have valid values." }
-    require(!Path(name).isAbsolute) { "Profile name contains invalid characters as it will be used as path. Profile: $name" }
-    require(root.isNotBlank()) { "Root cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values." }
-    require(rootPath.isAbsolute) { "Root must be an absolute path. Profile: $name" }
-    require(include.isNotEmpty() || ignore.isNotEmpty() || includeProfiles.isNotEmpty() || inheritProfiles.isNotEmpty()) { "Either include, ignore, includeProfiles or inheritProfiles must include at least 1 item. Profile: $name." }
-    require(includeProfiles.all { it.isNotBlank() }) { "IncludeProfile items cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values." }
-    require(inheritProfiles.all { it.isNotBlank() }) { "InheritProfile items cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values." }
-    require(include.all { it.isNotBlank() }) { "Include items cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values." }
-    require(ignore.all { it.isNotBlank() }) { "Ignore items cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values." }
+    require(name.isNotBlank()) {
+      "Profile name cannot be blank. If using Env Vars, make sure they have valid values."
+    }
+    require(sNameValidator.matches(name)) {
+      "Profile name contains invalid characters. Only alphanumeric characters, hyphen and underscore are permitted. Profile: $name"
+    }
+    require(root.isNotBlank()) {
+      "Root cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values."
+    }
+    require(rootPath.isAbsolute) {
+      "Root must be an absolute path. Profile: $name"
+    }
+    require(include.isNotEmpty() || ignore.isNotEmpty() || includeProfiles.isNotEmpty() || inheritProfiles.isNotEmpty()) {
+      "Either include, ignore, includeProfiles or inheritProfiles must include at least 1 item. Profile: $name."
+    }
+    require(includeProfiles.all { it.isNotBlank() }) {
+      "IncludeProfile items cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values."
+    }
+    require(inheritProfiles.all { it.isNotBlank() }) {
+      "InheritProfile items cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values."
+    }
+    require(include.all { it.isNotBlank() }) {
+      "Include items cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values."
+    }
+    include.forEach {
+      require(!sPathValidator.containsMatchIn(it)) {
+        "Include items cannot contains path traversal ('./' or '../') instructions: \"$it\". Profile: $name"
+      }
+    }
+    require(ignore.all { it.isNotBlank() }) {
+      "Ignore items cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values."
+    }
+    ignore.forEach {
+      require(!sPathValidator.containsMatchIn(it)) {
+        "Ignore items cannot contains path traversal ('./' or '../') instructions: \"$it\". Profile: $name"
+      }
+    }
     includePath.forEach {
-      require(!it.isAbsolute) { "Include paths must be relative: \"$it\". Profile: $name" }
+      require(!it.isAbsolute) {
+        "Include paths must be relative: \"$it\". Profile: $name"
+      }
     }
     ignorePath.forEach {
-      require(!it.isAbsolute) { "Ignore paths must be relative: \"$it\". Profile: $name" }
+      require(!it.isAbsolute) {
+        "Ignore paths must be relative: \"$it\". Profile: $name"
+      }
     }
   }
 }

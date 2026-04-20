@@ -12,10 +12,16 @@ class ProfileTest {
   }
 
   @Test
-  fun validateShouldReturnErrorIfNameFormsAnAbsolutePath() {
-    val profile = Profile("/", "")
-    val result = runCatching { profile.validate() }
-    assertThat(result.exceptionOrNull()).hasMessage("Profile name contains invalid characters as it will be used as path. Profile: /")
+  fun validateShouldReturnErrorIfNameHasInvalidCharacters() {
+    var profile = Profile(".a", "")
+    var result = runCatching { profile.validate() }
+    assertThat(result.exceptionOrNull()).hasMessage("Profile name contains invalid characters. Only alphanumeric characters, hyphen and underscore are permitted. Profile: .a")
+    profile = Profile("/a", "")
+    result = runCatching { profile.validate() }
+    assertThat(result.exceptionOrNull()).hasMessage("Profile name contains invalid characters. Only alphanumeric characters, hyphen and underscore are permitted. Profile: /a")
+    profile = Profile("../a", "")
+    result = runCatching { profile.validate() }
+    assertThat(result.exceptionOrNull()).hasMessage("Profile name contains invalid characters. Only alphanumeric characters, hyphen and underscore are permitted. Profile: ../a")
   }
 
   @Test
@@ -54,6 +60,16 @@ class ProfileTest {
   }
 
   @Test
+  fun validateShouldReturnErrorIfIncludeItemIsTraversing() {
+    var profile = Profile("name", "/root", listOf("/a/../"))
+    var result = runCatching { profile.validate() }
+    assertThat(result.exceptionOrNull()).hasMessage("Include items cannot contains path traversal ('./' or '../') instructions: \"/a/../\". Profile: name")
+    profile = Profile("name", "/root", listOf("../a"))
+    result = runCatching { profile.validate() }
+    assertThat(result.exceptionOrNull()).hasMessage("Include items cannot contains path traversal ('./' or '../') instructions: \"../a\". Profile: name")
+  }
+
+  @Test
   fun validateShouldReturnErrorIfIncludeProfilesItemIsEmpty() {
     val profile = Profile("name", "/root", includeProfiles = listOf(""))
     val result = runCatching { profile.validate() }
@@ -73,11 +89,22 @@ class ProfileTest {
     val result = runCatching { profile.validate() }
     assertThat(result.exceptionOrNull()).hasMessage("Ignore items cannot be blank. Profile: name. If using Env Vars, make sure they have valid values.")
   }
+
   @Test
   fun validateShouldReturnErrorIfIgnoreItemIsAbsolute() {
     val profile = Profile("name", "/root", listOf("a"), listOf("/b"))
     val result = runCatching { profile.validate() }
     assertThat(result.exceptionOrNull()).hasMessage("Ignore paths must be relative: \"/b\". Profile: name")
+  }
+
+  @Test
+  fun validateShouldReturnErrorIfIgnoreItemIsTraversing() {
+    var profile = Profile("name", "/root", listOf("a"), listOf("/a/../"))
+    var result = runCatching { profile.validate() }
+    assertThat(result.exceptionOrNull()).hasMessage("Ignore items cannot contains path traversal ('./' or '../') instructions: \"/a/../\". Profile: name")
+    profile = Profile("name", "/root", listOf("a"), listOf("../a"))
+    result = runCatching { profile.validate() }
+    assertThat(result.exceptionOrNull()).hasMessage("Ignore items cannot contains path traversal ('./' or '../') instructions: \"../a\". Profile: name")
   }
 
   @Test
