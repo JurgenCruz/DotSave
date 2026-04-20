@@ -90,27 +90,39 @@ class BackupHandlerTest {
       listOf(
         Profile("program1", "/root", listOf("file1", "folder2"), includeProfiles = listOf("include1")),
         Profile("include1", "/root", listOf("file3", "folder4"), listOf("ignore1"), listOf("include2")),
-        Profile("include2", "/root", listOf("file5", "folder6"), listOf("ignore2"))
+        Profile("include2", "/root/sub", listOf("file5", "folder6"), listOf("ignore2"))
       )
     )
     val copyList = mutableListOf<Pair<Path, Path>>()
     val copy = { p1: Path, p2: Path -> Result.success(copyList.add(p1 to p2)).map { } }
     val walk = { a: Path ->
-      sequenceOf(
-        a.resolve("file1"),
-        a.resolve("folder2/f1"),
-        a.resolve("folder2/f2"),
-        a.resolve("file3"),
-        a.resolve("folder4/f1"),
-        a.resolve("folder4/f2"),
-        a.resolve("file5"),
-        a.resolve("folder6/f1"),
-        a.resolve("folder6/f2"),
-        a.resolve("ignore1"),
-        a.resolve("ignore2/f1"),
-        a.resolve("ignore2/f2"),
-        a.resolve("missing1")
-      )
+      when (a) {
+        Path("/root")     -> sequenceOf(
+          a.resolve("file1"),
+          a.resolve("folder2/f1"),
+          a.resolve("folder2/f2"),
+          a.resolve("file3"),
+          a.resolve("folder4/f1"),
+          a.resolve("folder4/f2"),
+          a.resolve("ignore1"),
+          a.resolve("missing1"),
+          a.resolve("sub/file5"),
+          a.resolve("sub/folder6/f1"),
+          a.resolve("sub/folder6/f2"),
+          a.resolve("sub/ignore2/f1"),
+          a.resolve("sub/ignore2/f2"),
+        )
+
+        Path("/root/sub") -> sequenceOf(
+          a.resolve("file5"),
+          a.resolve("folder6/f1"),
+          a.resolve("folder6/f2"),
+          a.resolve("ignore2/f1"),
+          a.resolve("ignore2/f2"),
+        )
+
+        else              -> sequenceOf<Path>()
+      }
     }
     val result = BackupHandler.backup(config, config.profiles[0], backupPath, logStub, recreateDirStub, copy, walk)
     assertThat(result.exceptionOrNull()).isNull()
@@ -118,8 +130,8 @@ class BackupHandlerTest {
     assertThat(copyList).hasSize(6)
     assertThat(copyList).zipSatisfy(
       listOf(
-        "/root/file5" to "backup/include2/file5",
-        "/root/folder6" to "backup/include2/folder6",
+        "/root/sub/file5" to "backup/include2/file5",
+        "/root/sub/folder6" to "backup/include2/folder6",
         "/root/file3" to "backup/include1/file3",
         "/root/folder4" to "backup/include1/folder4",
         "/root/file1" to "backup/program1/file1",
@@ -142,7 +154,9 @@ class BackupHandlerTest {
     )
     val copyList = mutableListOf<Pair<Path, Path>>()
     val copy = { p1: Path, p2: Path -> Result.success(copyList.add(p1 to p2)).map { } }
-    val walk = { a: Path -> sequenceOf(a.resolve("missing1"), a.resolve("missing2")) }
+    val walk = { a: Path ->
+      sequenceOf(a.resolve("missing1"), a.resolve("missing2"))
+    }
     val result = BackupHandler.backup(config, config.profiles[0], backupPath, logStub, recreateDirStub, copy, walk)
     assertThat(result.exceptionOrNull()).isNull()
     assertThat(result.getOrThrow().map(Path::toString)).containsExactly("/root3/missing1", "/root3/missing2")
