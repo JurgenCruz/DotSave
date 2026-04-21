@@ -85,8 +85,12 @@ object Application {
   private fun dryRunRecreateDir(path: Path) = Result.success(Unit)
   private fun dryRunCopy(path: Path, path2: Path) = Result.success(Unit)
   private fun printMissingFiles(missingFiles: List<Path>) {
-    println("The following files were found under the profile root folder and not marked up for backup or ignored. This could mean they are new files recently added. Please review and adjust your config:")
-    missingFiles.forEach { println("  - $it") }
+    if (missingFiles.isEmpty()) {
+      println("No files found that were not marked up for backup or ignored.")
+    } else {
+      println("The following files were found under the profile root folder and not marked up for backup or ignored. This could mean they are new files recently added. Please review and adjust your config:")
+      missingFiles.forEach { println("  - $it") }
+    }
   }
 
   private fun printFlags(verbose: Boolean, dryRun: Boolean, action: Action, configFilePath: String, profileName: String?) {
