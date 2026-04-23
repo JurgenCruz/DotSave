@@ -32,7 +32,6 @@ object ConsoleLogger {
   }
 
   fun printErrors(ex: Throwable) {
-    println("${RED}Error: $ex$RESET")
-    ex.suppressed.forEach(::printErrors)
+    println("$RED${ex.stackTraceToString()}$RESET")
   }
 }
