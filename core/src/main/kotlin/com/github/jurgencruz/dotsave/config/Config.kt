@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
  * @constructor Create a new configuration.
  * @param profiles The different profiles that can be backed up and restored.
  */
+@Suppress("HardCodedStringLiteral")
 @Serializable
 data class Config(val profiles: List<Profile>) {
   /**
@@ -22,15 +23,16 @@ data class Config(val profiles: List<Profile>) {
   fun validate() {
     require(profiles.isNotEmpty()) { "No profiles found in configuration." }
     profiles.forEach { it.validate() }
-    require(profiles.distinctBy(Profile::name).size == profiles.size) { "Config cannot contain two profiles with the same name" }
-    require(profiles.count { it.default } <= 1) { "Config cannot contain more than one default profile" }
-    require(profiles.all { profile ->
-      profile.includeProfiles.all { child ->
-        profiles.any { it.name == child && profile.name != child }
-      } && profile.inheritProfiles.all { child ->
-        profiles.any { it.name == child && profile.name != child }
+    require(profiles.distinctBy(Profile::name).size == profiles.size) { "Config cannot contain two profiles with the same name." }
+    require(profiles.count { it.default } <= 1) { "Config cannot contain more than one default profile." }
+    profiles.forEach { profile ->
+      profile.includeProfiles.forEach { reference ->
+        require(profiles.any { it.name == reference && profile.name != reference }) { "Included profile: $reference does not exist in the configuration. Profile: ${profile.name}." }
       }
-    }) { "Profile references must exist" }
+      profile.inheritProfiles.forEach { reference ->
+        require(profiles.any { it.name == reference && profile.name != reference }) { "Inherited profile: $reference does not exist in the configuration. Profile: ${profile.name}." }
+      }
+    }
   }
 
   /**
@@ -45,9 +47,9 @@ data class Config(val profiles: List<Profile>) {
    */
   fun selectProfile(profileName: String?): Result<Profile> {
     val profile = if (profileName.isNullOrBlank()) {
-      profiles.firstOrNull { it.default } ?: return Result.failure(IllegalStateException("No default profile in config file and no profile name specified"))
+      profiles.firstOrNull { it.default } ?: return Result.failure(IllegalStateException("No default profile in config file and no profile name specified."))
     } else {
-      profiles.firstOrNull { it.name == profileName } ?: return Result.failure(IllegalStateException("No profile with name: $profileName exists"))
+      profiles.firstOrNull { it.name == profileName } ?: return Result.failure(IllegalStateException("No profile with name: $profileName exists."))
     }
     return Result.success(profile)
   }

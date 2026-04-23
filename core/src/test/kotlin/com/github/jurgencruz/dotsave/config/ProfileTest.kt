@@ -15,13 +15,13 @@ class ProfileTest {
   fun validateShouldReturnErrorIfNameHasInvalidCharacters() {
     var profile = Profile(".a", "")
     var result = runCatching { profile.validate() }
-    assertThat(result.exceptionOrNull()).hasMessage("Profile name contains invalid characters. Only alphanumeric characters, hyphen and underscore are permitted. Profile: .a")
+    assertThat(result.exceptionOrNull()).hasMessage("Profile name contains invalid characters. Only alphanumeric characters, hyphen and underscore are permitted. Profile: .a.")
     profile = Profile("/a", "")
     result = runCatching { profile.validate() }
-    assertThat(result.exceptionOrNull()).hasMessage("Profile name contains invalid characters. Only alphanumeric characters, hyphen and underscore are permitted. Profile: /a")
+    assertThat(result.exceptionOrNull()).hasMessage("Profile name contains invalid characters. Only alphanumeric characters, hyphen and underscore are permitted. Profile: /a.")
     profile = Profile("../a", "")
     result = runCatching { profile.validate() }
-    assertThat(result.exceptionOrNull()).hasMessage("Profile name contains invalid characters. Only alphanumeric characters, hyphen and underscore are permitted. Profile: ../a")
+    assertThat(result.exceptionOrNull()).hasMessage("Profile name contains invalid characters. Only alphanumeric characters, hyphen and underscore are permitted. Profile: ../a.")
   }
 
   @Test
@@ -35,7 +35,7 @@ class ProfileTest {
   fun validateShouldReturnErrorIfRootIsNotAbsolute() {
     val profile = Profile("name", "root")
     val result = runCatching { profile.validate() }
-    assertThat(result.exceptionOrNull()).hasMessage("Root must be an absolute path. Profile: name")
+    assertThat(result.exceptionOrNull()).hasMessage("Root must be an absolute path. Profile: name.")
   }
 
   @Test
@@ -56,17 +56,17 @@ class ProfileTest {
   fun validateShouldReturnErrorIfIncludeItemIsAbsolute() {
     val profile = Profile("name", "/root", listOf("/a"))
     val result = runCatching { profile.validate() }
-    assertThat(result.exceptionOrNull()).hasMessage("Include paths must be relative: \"/a\". Profile: name")
+    assertThat(result.exceptionOrNull()).hasMessage("Include paths must be relative: \"/a\". Profile: name.")
   }
 
   @Test
   fun validateShouldReturnErrorIfIncludeItemIsTraversing() {
     var profile = Profile("name", "/root", listOf("/a/../"))
     var result = runCatching { profile.validate() }
-    assertThat(result.exceptionOrNull()).hasMessage("Include items cannot contains path traversal ('./' or '../') instructions: \"/a/../\". Profile: name")
+    assertThat(result.exceptionOrNull()).hasMessage("Include items cannot contains path traversal ('./' or '../') instructions: \"/a/../\". Profile: name.")
     profile = Profile("name", "/root", listOf("../a"))
     result = runCatching { profile.validate() }
-    assertThat(result.exceptionOrNull()).hasMessage("Include items cannot contains path traversal ('./' or '../') instructions: \"../a\". Profile: name")
+    assertThat(result.exceptionOrNull()).hasMessage("Include items cannot contains path traversal ('./' or '../') instructions: \"../a\". Profile: name.")
   }
 
   @Test
@@ -94,17 +94,17 @@ class ProfileTest {
   fun validateShouldReturnErrorIfIgnoreItemIsAbsolute() {
     val profile = Profile("name", "/root", listOf("a"), listOf("/b"))
     val result = runCatching { profile.validate() }
-    assertThat(result.exceptionOrNull()).hasMessage("Ignore paths must be relative: \"/b\". Profile: name")
+    assertThat(result.exceptionOrNull()).hasMessage("Ignore paths must be relative: \"/b\". Profile: name.")
   }
 
   @Test
   fun validateShouldReturnErrorIfIgnoreItemIsTraversing() {
     var profile = Profile("name", "/root", listOf("a"), listOf("/a/../"))
     var result = runCatching { profile.validate() }
-    assertThat(result.exceptionOrNull()).hasMessage("Ignore items cannot contains path traversal ('./' or '../') instructions: \"/a/../\". Profile: name")
+    assertThat(result.exceptionOrNull()).hasMessage("Ignore items cannot contains path traversal ('./' or '../') instructions: \"/a/../\". Profile: name.")
     profile = Profile("name", "/root", listOf("a"), listOf("../a"))
     result = runCatching { profile.validate() }
-    assertThat(result.exceptionOrNull()).hasMessage("Ignore items cannot contains path traversal ('./' or '../') instructions: \"../a\". Profile: name")
+    assertThat(result.exceptionOrNull()).hasMessage("Ignore items cannot contains path traversal ('./' or '../') instructions: \"../a\". Profile: name.")
   }
 
   @Test

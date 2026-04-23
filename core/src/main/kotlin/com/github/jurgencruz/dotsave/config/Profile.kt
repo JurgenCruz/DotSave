@@ -63,13 +63,13 @@ data class Profile(
       "Profile name cannot be blank. If using Env Vars, make sure they have valid values."
     }
     require(sNameValidator.matches(name)) {
-      "Profile name contains invalid characters. Only alphanumeric characters, hyphen and underscore are permitted. Profile: $name"
+      "Profile name contains invalid characters. Only alphanumeric characters, hyphen and underscore are permitted. Profile: $name."
     }
     require(root.isNotBlank()) {
       "Root cannot be blank. Profile: $name. If using Env Vars, make sure they have valid values."
     }
     require(rootPath.isAbsolute) {
-      "Root must be an absolute path. Profile: $name"
+      "Root must be an absolute path. Profile: $name."
     }
     require(include.isNotEmpty() || ignore.isNotEmpty() || includeProfiles.isNotEmpty() || inheritProfiles.isNotEmpty()) {
       "Either include, ignore, includeProfiles or inheritProfiles must include at least 1 item. Profile: $name."
@@ -85,7 +85,7 @@ data class Profile(
     }
     include.forEach {
       require(!sPathValidator.containsMatchIn(it)) {
-        "Include items cannot contains path traversal ('./' or '../') instructions: \"$it\". Profile: $name"
+        "Include items cannot contains path traversal ('./' or '../') instructions: \"$it\". Profile: $name."
       }
     }
     require(ignore.all { it.isNotBlank() }) {
@@ -93,17 +93,17 @@ data class Profile(
     }
     ignore.forEach {
       require(!sPathValidator.containsMatchIn(it)) {
-        "Ignore items cannot contains path traversal ('./' or '../') instructions: \"$it\". Profile: $name"
+        "Ignore items cannot contains path traversal ('./' or '../') instructions: \"$it\". Profile: $name."
       }
     }
     includePath.forEach {
       require(!it.isAbsolute) {
-        "Include paths must be relative: \"$it\". Profile: $name"
+        "Include paths must be relative: \"$it\". Profile: $name."
       }
     }
     ignorePath.forEach {
       require(!it.isAbsolute) {
-        "Ignore paths must be relative: \"$it\". Profile: $name"
+        "Ignore paths must be relative: \"$it\". Profile: $name."
       }
     }
   }

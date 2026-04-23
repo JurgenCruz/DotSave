@@ -20,7 +20,7 @@ class ConfigTest {
       )
     )
     val result = runCatching { config.validate() }
-    assertThat(result.exceptionOrNull()).hasMessage("Config cannot contain two profiles with the same name")
+    assertThat(result.exceptionOrNull()).hasMessage("Config cannot contain two profiles with the same name.")
   }
 
   @Test
@@ -32,7 +32,7 @@ class ConfigTest {
       )
     )
     val result = runCatching { config.validate() }
-    assertThat(result.exceptionOrNull()).hasMessage("Config cannot contain more than one default profile")
+    assertThat(result.exceptionOrNull()).hasMessage("Config cannot contain more than one default profile.")
   }
 
   @Test
@@ -44,7 +44,7 @@ class ConfigTest {
       )
     )
     val result = runCatching { config.validate() }
-    assertThat(result.exceptionOrNull()).hasMessage("Profile references must exist")
+    assertThat(result.exceptionOrNull()).hasMessage("Included profile: child does not exist in the configuration. Profile: test.")
   }
 
   @Test
@@ -56,7 +56,7 @@ class ConfigTest {
       )
     )
     val result = runCatching { config.validate() }
-    assertThat(result.exceptionOrNull()).hasMessage("Profile references must exist")
+    assertThat(result.exceptionOrNull()).hasMessage("Inherited profile: child does not exist in the configuration. Profile: test.")
   }
 
   @Test
@@ -76,14 +76,14 @@ class ConfigTest {
   fun selectProfileShouldFailIfNoDefaultProfileAndNoNameSpecified() {
     val config = Config(listOf(Profile("program1", "/root1")))
     val result = config.selectProfile(null)
-    assertThat(result.exceptionOrNull()).hasMessage("No default profile in config file and no profile name specified")
+    assertThat(result.exceptionOrNull()).hasMessage("No default profile in config file and no profile name specified.")
   }
 
   @Test
   fun selectProfileShouldFailIfProfileSelectedDoesNotExist() {
     val config = Config(listOf(Profile("program1", "/root1")))
     val result = config.selectProfile("profile1")
-    assertThat(result.exceptionOrNull()).hasMessage("No profile with name: profile1 exists")
+    assertThat(result.exceptionOrNull()).hasMessage("No profile with name: profile1 exists.")
   }
 
   @Test
