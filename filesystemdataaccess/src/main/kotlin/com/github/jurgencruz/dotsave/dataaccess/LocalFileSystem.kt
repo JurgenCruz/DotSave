@@ -66,7 +66,7 @@ object LocalFileSystem {
       }
     } else {
       runCatching {
-        Files.copy(srcPath, destPath, LinkOption.NOFOLLOW_LINKS, StandardCopyOption.COPY_ATTRIBUTES, StandardCopyOption.REPLACE_EXISTING)
+        ensureExists(destPath.parent, srcPath.parent);
         Files.walk(srcPath, 1)
       }.flatMap { files ->
         files.asSequence().drop(1).map { srcFile ->
