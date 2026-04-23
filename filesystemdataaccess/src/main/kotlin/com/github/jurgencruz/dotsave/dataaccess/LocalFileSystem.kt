@@ -61,6 +61,7 @@ object LocalFileSystem {
     }
     return if (srcPath.isRegularFile()) {
       runCatching {
+        ensureExists(destPath.parent, srcPath.parent);
         Files.copy(srcPath, destPath, LinkOption.NOFOLLOW_LINKS, StandardCopyOption.COPY_ATTRIBUTES, StandardCopyOption.REPLACE_EXISTING)
       }
     } else {
@@ -76,4 +77,11 @@ object LocalFileSystem {
   }
 
   fun walk(path: Path): Sequence<Path> = path.walk()
+
+  private fun ensureExists(destPath: Path?, srcPath: Path?) {
+    if (destPath != null && srcPath != null && !destPath.exists()) {
+      ensureExists(destPath.parent, srcPath.parent)
+      Files.copy(srcPath, destPath, LinkOption.NOFOLLOW_LINKS, StandardCopyOption.COPY_ATTRIBUTES, StandardCopyOption.REPLACE_EXISTING)
+    }
+  }
 }
