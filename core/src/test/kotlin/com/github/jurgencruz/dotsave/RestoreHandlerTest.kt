@@ -2,22 +2,40 @@ package com.github.jurgencruz.dotsave
 
 import com.github.jurgencruz.dotsave.config.Config
 import com.github.jurgencruz.dotsave.config.Profile
+import com.github.jurgencruz.dotsave.dataaccess.FileSystem
 import com.github.jurgencruz.dotsave.logging.LogLevel
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.nio.file.Path
 import kotlin.io.path.Path
+import kotlin.io.path.name
 
 class RestoreHandlerTest {
   val backupPath = Path("backup")
   val logStub = { _: LogLevel, _: String -> }
+  val existsStub = { _: Path -> true }
+  val isDirectoryStub = { path: Path -> !path.name.startsWith("file") }
+  val isFileStub = { path: Path -> path.name.startsWith("file") }
+  val deleteDirStub = { _: Path -> true }
+  val createDirsStub = { _: Path -> }
+  val walkStub = { p: Path, _: Int -> sequenceOf(p) }
+  val copyStub = { _: Path, _: Path -> }
 
   @Test
   fun restoreShouldCopyFilesToCorrectDestination() {
     val config = Config(listOf(getProfile1(), getProfile2()))
     val copyList = mutableListOf<Pair<Path, Path>>()
-    val copy = { p1: Path, p2: Path -> Result.success(copyList.add(p1 to p2)).map { } }
-    val result = RestoreHandler.restore(config, config.profiles[0], backupPath, logStub, copy)
+    val copy: (Path, Path) -> Unit = { p1, p2 -> copyList.add(p1 to p2) }
+    val fileSystem = FileSystem(
+      existsStub,
+      isDirectoryStub,
+      isFileStub,
+      deleteDirStub,
+      createDirsStub,
+      copy,
+      walkStub
+    )
+    val result = RestoreHandler.restore(config, config.profiles[0], backupPath, logStub, fileSystem)
     assertThat(result.exceptionOrNull()).isNull()
     assertThat(copyList).hasSize(2)
     assertThat(copyList).zipSatisfy(
@@ -34,8 +52,17 @@ class RestoreHandlerTest {
   @Test
   fun restoreShouldFailIfCannotCopyAFile() {
     val config = Config(listOf(getProfile1(), getProfile2()))
-    val copy = { _: Path, _: Path -> Result.failure<Unit>(IllegalAccessException("test")) }
-    val result = RestoreHandler.restore(config, config.profiles[0], backupPath, logStub, copy)
+    val copy = { _: Path, _: Path -> throw IllegalAccessException("test") }
+    val fileSystem = FileSystem(
+      existsStub,
+      isDirectoryStub,
+      isFileStub,
+      deleteDirStub,
+      createDirsStub,
+      copy,
+      walkStub
+    )
+    val result = RestoreHandler.restore(config, config.profiles[0], backupPath, logStub, fileSystem)
     assertThat(result.exceptionOrNull()).hasMessage("test")
   }
 
@@ -43,8 +70,17 @@ class RestoreHandlerTest {
   fun restoreShouldAggregateErrorsAndContinue() {
     val config = Config(listOf(Profile("program1", "/root1", listOf("file1", "folder2", "file3", "folder4"))))
     var i = 0
-    val copy = { _: Path, _: Path -> Result.failure<Unit>(IllegalAccessException("test${++i}")) }
-    val result = RestoreHandler.restore(config, config.profiles[0], backupPath, logStub, copy)
+    val copy = { _: Path, _: Path -> throw IllegalAccessException("test${++i}") }
+    val fileSystem = FileSystem(
+      existsStub,
+      isDirectoryStub,
+      isFileStub,
+      deleteDirStub,
+      createDirsStub,
+      copy,
+      walkStub
+    )
+    val result = RestoreHandler.restore(config, config.profiles[0], backupPath, logStub, fileSystem)
     val exception = result.exceptionOrNull()
     assertThat(exception).hasMessage("test1")
     assertThat(exception!!.suppressed).zipSatisfy(arrayOf("test2", "test3", "test4")) { a, b ->
@@ -62,8 +98,17 @@ class RestoreHandlerTest {
       )
     )
     val copyList = mutableListOf<Pair<Path, Path>>()
-    val copy = { p1: Path, p2: Path -> Result.success(copyList.add(p1 to p2)).map { } }
-    val result = RestoreHandler.restore(config, config.profiles[0], backupPath, logStub, copy)
+    val copy: (Path, Path) -> Unit = { p1, p2 -> copyList.add(p1 to p2) }
+    val fileSystem = FileSystem(
+      existsStub,
+      isDirectoryStub,
+      isFileStub,
+      deleteDirStub,
+      createDirsStub,
+      copy,
+      walkStub
+    )
+    val result = RestoreHandler.restore(config, config.profiles[0], backupPath, logStub, fileSystem)
     assertThat(result.exceptionOrNull()).isNull()
     assertThat(copyList).hasSize(6)
     assertThat(copyList).zipSatisfy(
@@ -91,8 +136,17 @@ class RestoreHandlerTest {
       )
     )
     val copyList = mutableListOf<Pair<Path, Path>>()
-    val copy = { p1: Path, p2: Path -> Result.success(copyList.add(p1 to p2)).map { } }
-    val result = RestoreHandler.restore(config, config.profiles[0], backupPath, logStub, copy)
+    val copy: (Path, Path) -> Unit = { p1, p2 -> copyList.add(p1 to p2) }
+    val fileSystem = FileSystem(
+      existsStub,
+      isDirectoryStub,
+      isFileStub,
+      deleteDirStub,
+      createDirsStub,
+      copy,
+      walkStub
+    )
+    val result = RestoreHandler.restore(config, config.profiles[0], backupPath, logStub, fileSystem)
     assertThat(result.exceptionOrNull()).isNull()
     assertThat(copyList).hasSize(6)
     assertThat(copyList).zipSatisfy(

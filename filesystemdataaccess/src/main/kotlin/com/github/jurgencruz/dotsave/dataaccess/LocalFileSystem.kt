@@ -1,8 +1,5 @@
 package com.github.jurgencruz.dotsave.dataaccess
 
-import com.github.jurgencruz.dotsave.utils.flatMap
-import com.github.jurgencruz.dotsave.utils.mergeFailures
-import java.io.FileNotFoundException
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
@@ -10,8 +7,6 @@ import java.nio.file.StandardCopyOption
 import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
-import kotlin.io.path.name
-import kotlin.io.path.walk
 import kotlin.streams.asSequence
 
 /**
@@ -24,64 +19,49 @@ object LocalFileSystem {
    * @param path The path of the file.
    * @return A result object with the contents of the file as string if successful or exception if error.
    */
-  fun read(path: Path): Result<String> {
-    return if (path.exists()) {
-      path.toFile().runCatching { readText(Charsets.UTF_8) }
-    } else {
-      Result.failure(FileNotFoundException("file not found: $path"))
-    }
+  fun read(path: Path) = path.runCatching { toFile().readText(Charsets.UTF_8) }
+
+  fun getFileSystem(dryRun: Boolean): FileSystem {
+    return if (dryRun)
+      FileSystem(
+        ::exists,
+        ::isDirectory,
+        ::isFile,
+        ::deleteDir,
+        ::createDirectories,
+        ::copyFile,
+        ::walk
+      )
+    else
+      FileSystem(
+        ::exists,
+        ::isDirectory,
+        ::isFile,
+        ::dryRunDeleteDir,
+        ::dryRunCreateDirectories,
+        ::dryRunCopyFile,
+        ::walk
+      )
   }
 
-  /**
-   * Delete and create a directory again to start fresh.
-   * @param path The path of the directory to recreate.
-   * @return A result object to signal if the operation was successful.
-   */
-  fun recreateDir(path: Path): Result<Unit> {
-    if (path.exists()) {
-      if (!path.isDirectory()) {
-        return Result.failure(IllegalStateException("Path '$path' is not a directory, cannot recreate."))
-      }
-      if (!path.toFile().deleteRecursively()) {
-        return Result.failure(IllegalStateException("Could not delete directory."))
-      }
-    }
-    return runCatching { Files.createDirectories(path) }
+  private fun exists(path: Path) = path.exists()
+  private fun isDirectory(path: Path) = path.isDirectory()
+  private fun isFile(path: Path) = path.isRegularFile()
+  private fun deleteDir(path: Path) = path.toFile().deleteRecursively()
+  private fun dryRunDeleteDir(path: Path) = true
+  private fun createDirectories(path: Path) {
+    Files.createDirectories(path)
   }
 
-  /**
-   * Copy a file or directory to the destination directory.
-   * @param srcPath The path of the file or directory to copy.
-   * @param destPath The path of the destination file or directory to copy to.
-   * @return A result object to signal if the operation was successful.
-   */
-  fun copy(srcPath: Path, destPath: Path): Result<Unit> {
-    if (!srcPath.exists()) {
-      return Result.failure(IllegalStateException("Path '$srcPath' does not exist, cannot copy to '$destPath'."))
-    }
-    return if (srcPath.isRegularFile()) {
-      runCatching {
-        ensureExists(destPath.parent, srcPath.parent);
-        Files.copy(srcPath, destPath, LinkOption.NOFOLLOW_LINKS, StandardCopyOption.COPY_ATTRIBUTES, StandardCopyOption.REPLACE_EXISTING)
-      }
-    } else {
-      runCatching {
-        ensureExists(destPath.parent, srcPath.parent);
-        Files.walk(srcPath, 1)
-      }.flatMap { files ->
-        files.asSequence().drop(1).map { srcFile ->
-          copy(srcFile, destPath.resolve(srcFile.name))
-        }.mergeFailures().map { }
-      }
-    }
-  }
+  private fun dryRunCreateDirectories(path: Path) {}
+  private fun copyFile(srcPath: Path, destPath: Path) = Files.copy(
+    srcPath,
+    destPath,
+    LinkOption.NOFOLLOW_LINKS,
+    StandardCopyOption.COPY_ATTRIBUTES,
+    StandardCopyOption.REPLACE_EXISTING
+  )
 
-  fun walk(path: Path): Sequence<Path> = path.walk()
-
-  private fun ensureExists(destPath: Path?, srcPath: Path?) {
-    if (destPath != null && srcPath != null && !destPath.exists()) {
-      ensureExists(destPath.parent, srcPath.parent)
-      Files.copy(srcPath, destPath, LinkOption.NOFOLLOW_LINKS, StandardCopyOption.COPY_ATTRIBUTES, StandardCopyOption.REPLACE_EXISTING)
-    }
-  }
+  private fun dryRunCopyFile(srcPath: Path, destPath: Path) {}
+  private fun walk(path: Path, maxDepth: Int): Sequence<Path> = Files.walk(path, maxDepth).asSequence()
 }

@@ -48,15 +48,7 @@ object Application {
 
   private fun backup(configFilePath: String, profileName: String?, log: (LogLevel, String) -> Unit, dryRun: Boolean) {
     getContext(configFilePath, profileName).flatMap { (path, config, profile) ->
-      BackupHandler.backup(
-        config,
-        profile,
-        path,
-        log,
-        if (dryRun) ::dryRunRecreateDir else LocalFileSystem::recreateDir,
-        if (dryRun) ::dryRunCopy else LocalFileSystem::copy,
-        LocalFileSystem::walk
-      )
+      BackupHandler.backup(config, profile, path, log, LocalFileSystem.getFileSystem(dryRun))
     }.fold({
       printMissingFiles(it)
     }, {
@@ -67,7 +59,7 @@ object Application {
 
   private fun restore(configFilePath: String, profileName: String?, log: (LogLevel, String) -> Unit, dryRun: Boolean) {
     getContext(configFilePath, profileName).flatMap { (path, config, profile) ->
-      RestoreHandler.restore(config, profile, path, log, if (dryRun) ::dryRunCopy else LocalFileSystem::copy)
+      RestoreHandler.restore(config, profile, path, log, LocalFileSystem.getFileSystem(dryRun))
     }.onFailure {
       ConsoleLogger.printErrors(it)
       exitProcess(3)
@@ -82,8 +74,6 @@ object Application {
 
   private fun getConfig(path: Path) = readConfig(path).flatMap(EnvVarReplacer::replaceEnvVars).mapCatching { it.apply { validate() } }
   private fun readConfig(path: Path) = LocalFileSystem.read(path).flatMap<Config, String>(::deserialize)
-  private fun dryRunRecreateDir(path: Path) = Result.success(Unit)
-  private fun dryRunCopy(path: Path, path2: Path) = Result.success(Unit)
   private fun printMissingFiles(missingFiles: List<Path>) {
     if (missingFiles.isEmpty()) {
       println("No files found that were not marked up for backup or ignored.")

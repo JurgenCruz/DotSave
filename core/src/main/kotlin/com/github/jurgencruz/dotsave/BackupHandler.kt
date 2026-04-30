@@ -2,10 +2,12 @@ package com.github.jurgencruz.dotsave
 
 import com.github.jurgencruz.dotsave.config.Config
 import com.github.jurgencruz.dotsave.config.Profile
+import com.github.jurgencruz.dotsave.dataaccess.FileSystem
 import com.github.jurgencruz.dotsave.logging.LogLevel
 import com.github.jurgencruz.dotsave.utils.flatMap
 import com.github.jurgencruz.dotsave.utils.mergeFailures
 import java.nio.file.Path
+import kotlin.io.path.name
 
 /**
  * Handler for the backup process.
@@ -15,11 +17,10 @@ object BackupHandler {
   /**
    * Backup files based on the configuration on the specified path.
    * @param config The backup configuration.
-   * @param backupPath The path of the directory to back up to.
    * @param profile The profile to execute.
+   * @param backupPath The path of the directory to back up to.
    * @param log The logger function.
-   * @param recreateDir function that deletes and creates a directory again.
-   * @param copy function to copy a file from path a to path b.
+   * @param fileSystem The group of functions to interact with the File System.
    * @return A result object with the list of missing files if successful or exception if failure.
    */
   fun backup(
@@ -27,11 +28,9 @@ object BackupHandler {
     profile: Profile,
     backupPath: Path,
     log: (LogLevel, String) -> Unit,
-    recreateDir: (Path) -> Result<Unit>,
-    copy: (Path, Path) -> Result<Unit>,
-    walk: (Path) -> Sequence<Path>
-  ) = backupWithLists(config, profile, backupPath, log, recreateDir, copy).map { (roots, copiedPaths, ignoredPaths) ->
-    calculateMissingFiles(roots, copiedPaths, ignoredPaths, walk)
+    fileSystem: FileSystem
+  ) = backupWithLists(config, profile, backupPath, log, fileSystem).map { (roots, copiedPaths, ignoredPaths) ->
+    calculateMissingFiles(roots, copiedPaths, ignoredPaths, fileSystem)
   }
 
   private fun backupWithLists(
@@ -39,20 +38,19 @@ object BackupHandler {
     profile: Profile,
     backupPath: Path,
     log: (LogLevel, String) -> Unit,
-    recreateDir: (Path) -> Result<Unit>,
-    copy: (Path, Path) -> Result<Unit>
+    fileSystem: FileSystem
   ): Result<Triple<MutableList<Path>, MutableSet<Path>, MutableSet<Path>>> = profile.mergeInheritedProfiles(config).flatMap { p ->
-    runIncludedProfiles(p, config, backupPath, log, recreateDir, copy).map { p to it }
+    runIncludedProfiles(p, config, backupPath, log, fileSystem).map { p to it }
   }.flatMap { (p, lists) ->
     runCatching { backupPath.resolve(p.name) to (p to lists) }
   }.onSuccess { (path) ->
     log(LogLevel.INFO, "Recreating directory: $path")
   }.flatMap { (path, p) ->
-    recreateDir(path).map { p }
+    recreateDir(path, fileSystem).map { p }
   }.onSuccess { (p, _) ->
     log(LogLevel.INFO, "Backing up profile: ${p.name}")
   }.flatMap { (profile, lists) ->
-    backupFiles(profile, backupPath, log, copy).map { new ->
+    backupFiles(profile, backupPath, log, fileSystem).map { new ->
       calculateRootsAndFiles(
         lists.first,
         lists.second,
@@ -66,43 +64,14 @@ object BackupHandler {
     }
   }
 
-  private fun calculateMissingFiles(
-    roots: MutableList<Path>,
-    copiedPaths: MutableSet<Path>,
-    ignoredPaths: MutableSet<Path>,
-    walk: (Path) -> Sequence<Path>
-  ) = roots.flatMap {
-    walk(it).toList()
-  }.filter {
-    notIncludedOrIgnored(copiedPaths, ignoredPaths, it)
-  }
-
-  private fun notIncludedOrIgnored(copiedPaths: MutableSet<Path>, ignoredPaths: MutableSet<Path>, file: Path) =
-    !(ignoredPaths.any { file.startsWith(it) } || copiedPaths.any { file.startsWith(it) })
-
-  private fun backupFiles(
-    profile: Profile,
-    backupPath: Path,
-    log: (LogLevel, String) -> Unit,
-    copy: (Path, Path) -> Result<Unit>
-  ) = backupPath.resolve(profile.name).let { bPath ->
-    profile.includePath.asSequence().map { inc ->
-      val srcPath = profile.rootPath.resolve(inc)
-      val desPath = bPath.resolve(inc)
-      log(LogLevel.INFO, "Copying '$srcPath' to '$desPath'")
-      copy(srcPath, desPath).map { srcPath }
-    }.mergeFailures()
-  }
-
   private fun runIncludedProfiles(
     profile: Profile,
     config: Config,
     backupPath: Path,
     log: (LogLevel, String) -> Unit,
-    recreateDir: (Path) -> Result<Unit>,
-    copy: (Path, Path) -> Result<Unit>
+    fileSystem: FileSystem
   ): Result<Triple<MutableList<Path>, MutableSet<Path>, MutableSet<Path>>> = profile.includeProfiles.asSequence().map { name ->
-    backupWithLists(config, config.profiles.first { (n) -> n == name }, backupPath, log, recreateDir, copy)
+    backupWithLists(config, config.profiles.first { (n) -> n == name }, backupPath, log, fileSystem)
   }.mergeFailures().map { list ->
     val roots = mutableListOf<Path>()
     val copiedPaths = mutableSetOf<Path>()
@@ -134,4 +103,66 @@ object BackupHandler {
     }
     ignoredPaths.addAll(newIgnoredPaths)
   }
+
+  private fun recreateDir(path: Path, fileSystem: FileSystem): Result<Unit> {
+    if (fileSystem.exists(path)) {
+      if (!fileSystem.isDirectory(path)) {
+        return Result.failure(IllegalStateException("Path '$path' is not a directory, cannot recreate."))
+      }
+      if (!fileSystem.deleteDir(path)) {
+        return Result.failure(IllegalStateException("Could not delete directory."))
+      }
+    }
+    return runCatching { fileSystem.createDirectories(path) }
+  }
+
+  private fun backupFiles(
+    profile: Profile,
+    backupPath: Path,
+    log: (LogLevel, String) -> Unit,
+    fileSystem: FileSystem
+  ) = backupPath.resolve(profile.name).let { bPath ->
+    profile.includePath.asSequence().map { inc ->
+      val srcPath = profile.rootPath.resolve(inc)
+      val desPath = bPath.resolve(inc)
+      log(LogLevel.INFO, "Copying '$srcPath' to '$desPath'")
+      copy(srcPath, desPath, fileSystem).map { srcPath }
+    }.mergeFailures()
+  }
+
+  private fun copy(srcPath: Path, destPath: Path, fileSystem: FileSystem): Result<Unit> {
+    if (!fileSystem.exists(srcPath)) {
+      return Result.failure(IllegalStateException("Path '$srcPath' does not exist, cannot copy to '$destPath'."))
+    }
+    return if (fileSystem.isFile(srcPath)) {
+      runCatching {
+        fileSystem.createParentDirs(destPath.parent, srcPath.parent)
+        fileSystem.copyFile(srcPath, destPath)
+      }
+    } else {
+      runCatching {
+        fileSystem.createParentDirs(destPath.parent, srcPath.parent)
+        fileSystem.copyFile(srcPath, destPath)
+        fileSystem.walk(srcPath, 1)
+      }.flatMap { files ->
+        files.drop(1).map { srcFile ->
+          copy(srcFile, destPath.resolve(srcFile.name), fileSystem)
+        }.mergeFailures().map { }
+      }
+    }
+  }
+
+  private fun calculateMissingFiles(
+    roots: MutableList<Path>,
+    copiedPaths: MutableSet<Path>,
+    ignoredPaths: MutableSet<Path>,
+    fileSystem: FileSystem
+  ) = roots.flatMap {
+    fileSystem.walk(it).drop(1).toList()
+  }.filter {
+    notIncludedOrIgnored(copiedPaths, ignoredPaths, it)
+  }
+
+  private fun notIncludedOrIgnored(copiedPaths: MutableSet<Path>, ignoredPaths: MutableSet<Path>, file: Path) =
+    !(ignoredPaths.any { file.startsWith(it) } || copiedPaths.any { file.startsWith(it) })
 }

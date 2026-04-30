@@ -2,25 +2,40 @@ package com.github.jurgencruz.dotsave
 
 import com.github.jurgencruz.dotsave.config.Config
 import com.github.jurgencruz.dotsave.config.Profile
+import com.github.jurgencruz.dotsave.dataaccess.FileSystem
 import com.github.jurgencruz.dotsave.logging.LogLevel
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.nio.file.Path
 import kotlin.io.path.Path
+import kotlin.io.path.name
 
 class BackupHandlerTest {
   val backupPath = Path("backup")
   val logStub = { _: LogLevel, _: String -> }
-  val recreateDirStub = { _: Path -> Result.success(Unit) }
-  val walkStub = { _: Path -> sequenceOf<Path>() }
-  val copyStub = { _: Path, _: Path -> Result.success(Unit) }
+  val existsStub = { _: Path -> true }
+  val isDirectoryStub = { path: Path -> !path.name.startsWith("file") }
+  val isFileStub = { path: Path -> path.name.startsWith("file") }
+  val deleteDirStub = { _: Path -> true }
+  val createDirsStub = { _: Path -> }
+  val walkStub = { p: Path, _: Int -> sequenceOf(p) }
+  val copyStub = { _: Path, _: Path -> }
 
   @Test
   fun backupShouldCopyFilesToCorrectDestination() {
     val config = Config(listOf(getProfile1(), getProfile2()))
     val copyList = mutableListOf<Pair<Path, Path>>()
-    val copy = { p1: Path, p2: Path -> Result.success(copyList.add(p1 to p2)).map { } }
-    val result = BackupHandler.backup(config, config.profiles[0], backupPath, logStub, recreateDirStub, copy, walkStub)
+    val copy: (Path, Path) -> Unit = { p1, p2 -> copyList.add(p1 to p2) }
+    val fileSystem = FileSystem(
+      existsStub,
+      isDirectoryStub,
+      isFileStub,
+      deleteDirStub,
+      createDirsStub,
+      copy,
+      walkStub
+    )
+    val result = BackupHandler.backup(config, config.profiles[0], backupPath, logStub, fileSystem)
     assertThat(result.exceptionOrNull()).isNull()
     assertThat(copyList).hasSize(2)
     assertThat(copyList).zipSatisfy(
@@ -37,16 +52,35 @@ class BackupHandlerTest {
   @Test
   fun backupShouldFailIfCannotCreateDestinationDir() {
     val config = Config(listOf(getProfile1()))
-    val recreateDir = { _: Path -> Result.failure<Unit>(IllegalAccessException("test")) }
-    val result = BackupHandler.backup(config, config.profiles[0], backupPath, logStub, recreateDir, copyStub, walkStub)
+    val exists = { _: Path -> false }
+    val createDirectories = { _: Path -> throw IllegalAccessException("test") }
+    val fileSystem = FileSystem(
+      exists,
+      isDirectoryStub,
+      isFileStub,
+      deleteDirStub,
+      createDirectories,
+      copyStub,
+      walkStub
+    )
+    val result = BackupHandler.backup(config, config.profiles[0], backupPath, logStub, fileSystem)
     assertThat(result.exceptionOrNull()).hasMessage("test")
   }
 
   @Test
   fun backupShouldFailIfCannotCopyAFile() {
     val config = Config(listOf(getProfile1(), getProfile2()))
-    val copy = { _: Path, _: Path -> Result.failure<Unit>(IllegalAccessException("test")) }
-    val result = BackupHandler.backup(config, config.profiles[0], backupPath, logStub, recreateDirStub, copy, walkStub)
+    val copy = { _: Path, _: Path -> throw IllegalAccessException("test") }
+    val fileSystem = FileSystem(
+      existsStub,
+      isDirectoryStub,
+      isFileStub,
+      deleteDirStub,
+      createDirsStub,
+      copy,
+      walkStub
+    )
+    val result = BackupHandler.backup(config, config.profiles[0], backupPath, logStub, fileSystem)
     assertThat(result.exceptionOrNull()).hasMessage("test")
   }
 
@@ -54,8 +88,17 @@ class BackupHandlerTest {
   fun backupShouldAggregateErrorsAndContinue() {
     val config = Config(listOf(Profile("program1", "/root1", listOf("file1", "folder2", "file3", "folder4"))))
     var i = 0
-    val copy = { _: Path, _: Path -> Result.failure<Unit>(IllegalAccessException("test${++i}")) }
-    val result = BackupHandler.backup(config, config.profiles[0], backupPath, logStub, recreateDirStub, copy, walkStub)
+    val copy = { _: Path, _: Path -> throw IllegalAccessException("test${++i}") }
+    val fileSystem = FileSystem(
+      existsStub,
+      isDirectoryStub,
+      isFileStub,
+      deleteDirStub,
+      createDirsStub,
+      copy,
+      walkStub
+    )
+    val result = BackupHandler.backup(config, config.profiles[0], backupPath, logStub, fileSystem)
     val exception = result.exceptionOrNull()
     assertThat(exception).hasMessage("test1")
     assertThat(exception!!.suppressed).zipSatisfy(arrayOf("test2", "test3", "test4")) { a, b ->
@@ -66,22 +109,40 @@ class BackupHandlerTest {
   @Test
   fun backupShouldReturnListOfFilesNotBackedUpOrIgnored() {
     val config = Config(listOf(getProfile1()))
-    val walk = { a: Path ->
-      sequenceOf(
-        a.resolve("file1"),
-        a.resolve("folder2/f1"),
-        a.resolve("folder2/f2"),
-        a.resolve("file3"),
-        a.resolve("folder4/f1"),
-        a.resolve("folder4/f2"),
-        a.resolve("ignore1"),
-        a.resolve("ignore2/f1"),
-        a.resolve("ignore2/f2")
-      )
+    val walk = { a: Path, d: Int ->
+      when (d) {
+        1    -> sequenceOf(
+          a,
+          a.resolve("file1"),
+          a.resolve("file2"),
+        )
+
+        else -> sequenceOf(
+          a,
+          a.resolve("file1"),
+          a.resolve("folder2/file1"),
+          a.resolve("folder2/file2"),
+          a.resolve("file3"),
+          a.resolve("folder4/file1"),
+          a.resolve("folder4/file2"),
+          a.resolve("ignore1"),
+          a.resolve("ignore2/file1"),
+          a.resolve("ignore2/file2")
+        )
+      }
     }
-    val result = BackupHandler.backup(config, config.profiles[0], backupPath, logStub, recreateDirStub, copyStub, walk)
+    val fileSystem = FileSystem(
+      existsStub,
+      isDirectoryStub,
+      isFileStub,
+      deleteDirStub,
+      createDirsStub,
+      copyStub,
+      walk
+    )
+    val result = BackupHandler.backup(config, config.profiles[0], backupPath, logStub, fileSystem)
     assertThat(result.exceptionOrNull()).isNull()
-    assertThat(result.getOrThrow().map(Path::toString)).containsExactly("/root1/file3", "/root1/folder4/f1", "/root1/folder4/f2")
+    assertThat(result.getOrThrow().map(Path::toString)).containsExactly("/root1/file3", "/root1/folder4/file1", "/root1/folder4/file2")
   }
 
   @Test
@@ -94,37 +155,48 @@ class BackupHandlerTest {
       )
     )
     val copyList = mutableListOf<Pair<Path, Path>>()
-    val copy = { p1: Path, p2: Path -> Result.success(copyList.add(p1 to p2)).map { } }
-    val walk = { a: Path ->
+    val copy: (Path, Path) -> Unit = { p1, p2 -> copyList.add(p1 to p2) }
+    val walk = { a: Path, _: Int ->
       when (a) {
         Path("/root")     -> sequenceOf(
+          a,
           a.resolve("file1"),
-          a.resolve("folder2/f1"),
-          a.resolve("folder2/f2"),
+          a.resolve("folder2/file1"),
+          a.resolve("folder2/file2"),
           a.resolve("file3"),
-          a.resolve("folder4/f1"),
-          a.resolve("folder4/f2"),
+          a.resolve("folder4/file1"),
+          a.resolve("folder4/file2"),
           a.resolve("ignore1"),
           a.resolve("missing1"),
           a.resolve("sub/file5"),
-          a.resolve("sub/folder6/f1"),
-          a.resolve("sub/folder6/f2"),
-          a.resolve("sub/ignore2/f1"),
-          a.resolve("sub/ignore2/f2"),
+          a.resolve("sub/folder6/file1"),
+          a.resolve("sub/folder6/file2"),
+          a.resolve("sub/ignore2/file1"),
+          a.resolve("sub/ignore2/file2"),
         )
 
         Path("/root/sub") -> sequenceOf(
+          a,
           a.resolve("file5"),
-          a.resolve("folder6/f1"),
-          a.resolve("folder6/f2"),
-          a.resolve("ignore2/f1"),
-          a.resolve("ignore2/f2"),
+          a.resolve("folder6/file1"),
+          a.resolve("folder6/file2"),
+          a.resolve("ignore2/file1"),
+          a.resolve("ignore2/file2"),
         )
 
         else              -> sequenceOf<Path>()
       }
     }
-    val result = BackupHandler.backup(config, config.profiles[0], backupPath, logStub, recreateDirStub, copy, walk)
+    val fileSystem = FileSystem(
+      existsStub,
+      isDirectoryStub,
+      isFileStub,
+      deleteDirStub,
+      createDirsStub,
+      copy,
+      walk
+    )
+    val result = BackupHandler.backup(config, config.profiles[0], backupPath, logStub, fileSystem)
     assertThat(result.exceptionOrNull()).isNull()
     assertThat(result.getOrThrow().map(Path::toString)).containsExactly("/root/missing1")
     assertThat(copyList).hasSize(6)
@@ -153,11 +225,27 @@ class BackupHandlerTest {
       )
     )
     val copyList = mutableListOf<Pair<Path, Path>>()
-    val copy = { p1: Path, p2: Path -> Result.success(copyList.add(p1 to p2)).map { } }
-    val walk = { a: Path ->
-      sequenceOf(a.resolve("missing1"), a.resolve("missing2"))
+    val copy: (Path, Path) -> Unit = { p1, p2 -> copyList.add(p1 to p2) }
+    val walk = { a: Path, d: Int ->
+      when (d) {
+        1    -> sequenceOf(a)
+        else -> sequenceOf(
+          a,
+          a.resolve("missing1"),
+          a.resolve("missing2")
+        )
+      }
     }
-    val result = BackupHandler.backup(config, config.profiles[0], backupPath, logStub, recreateDirStub, copy, walk)
+    val fileSystem = FileSystem(
+      existsStub,
+      isDirectoryStub,
+      isFileStub,
+      deleteDirStub,
+      createDirsStub,
+      copy,
+      walk
+    )
+    val result = BackupHandler.backup(config, config.profiles[0], backupPath, logStub, fileSystem)
     assertThat(result.exceptionOrNull()).isNull()
     assertThat(result.getOrThrow().map(Path::toString)).containsExactly("/root3/missing1", "/root3/missing2")
     assertThat(copyList).hasSize(6)
@@ -176,6 +264,6 @@ class BackupHandlerTest {
     }
   }
 
-  private fun getProfile1() = Profile("program1", "/root1", listOf("file1", "folder2"), listOf("ignore1", "ignore2/"))
+  private fun getProfile1() = Profile("program1", "/root1", listOf("file1", "folder2"), listOf("ignore1", "ignore2"))
   private fun getProfile2() = Profile("program2", "/root2", listOf("file3", "folder4"))
 }
