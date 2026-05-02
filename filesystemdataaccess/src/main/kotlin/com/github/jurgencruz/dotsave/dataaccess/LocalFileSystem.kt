@@ -28,20 +28,6 @@ object LocalFileSystem {
         ::exists,
         ::isDirectory,
         ::isFile,
-        ::deleteDir,
-        ::createDirectory,
-        ::copyFile,
-        ::changeOwnerAndAttrs,
-        ::getMetadata,
-        ::read,
-        ::write,
-        ::walk
-      )
-    else
-      FileSystem(
-        ::exists,
-        ::isDirectory,
-        ::isFile,
         ::dryRunDeleteDir,
         ::dryRunCreateDirectories,
         ::dryRunCopyFile,
@@ -49,6 +35,20 @@ object LocalFileSystem {
         ::getMetadata,
         ::read,
         ::dryRunWrite,
+        ::walk
+      )
+    else
+      FileSystem(
+        ::exists,
+        ::isDirectory,
+        ::isFile,
+        ::deleteDir,
+        ::createDirectory,
+        ::copyFile,
+        ::changeOwnerAndAttrs,
+        ::getMetadata,
+        ::read,
+        ::write,
         ::walk
       )
   }
