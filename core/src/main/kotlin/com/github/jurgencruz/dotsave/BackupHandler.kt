@@ -105,6 +105,7 @@ object BackupHandler {
   ) {
     newRoots.forEach { newRoot ->
       if (!roots.any { newRoot.startsWith(it) }) {
+        roots.removeIf { it.startsWith(newRoot) }
         roots.add(newRoot)
       }
     }
