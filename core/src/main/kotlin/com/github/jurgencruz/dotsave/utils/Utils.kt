@@ -59,3 +59,7 @@ fun <T> Sequence<Result<T>>.mergeFailures(): Result<List<T>> {
 inline fun <reified T> deserialize(string: String): Result<T> = runCatching {
   sJson.decodeFromString<T>(string)
 }
+
+inline fun <reified T> serialize(obj: T): Result<String> = runCatching {
+  sJson.encodeToString(obj)
+}

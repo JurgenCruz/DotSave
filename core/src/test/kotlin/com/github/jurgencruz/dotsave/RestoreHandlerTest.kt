@@ -18,8 +18,11 @@ class RestoreHandlerTest {
   val isFileStub = { path: Path -> path.name.startsWith("file") }
   val deleteDirStub = { _: Path -> true }
   val createDirsStub = { _: Path -> }
+  val changeOwnerAndAttrsStub = { _: Path, _: FileMetaData -> }
+  val getMetadataStub = { _: Path -> FileMetaData("owner", "r--r--r--") }
+  val readStub = { _: Path -> Result.success("") }
+  val writeStub = { _: Path, _: String -> Result.success(Unit) }
   val walkStub = { p: Path, _: Int -> sequenceOf(p) }
-  val copyStub = { _: Path, _: Path -> }
 
   @Test
   fun restoreShouldCopyFilesToCorrectDestination() {
@@ -33,6 +36,10 @@ class RestoreHandlerTest {
       deleteDirStub,
       createDirsStub,
       copy,
+      changeOwnerAndAttrsStub,
+      getMetadataStub,
+      readStub,
+      writeStub,
       walkStub
     )
     val result = RestoreHandler.restore(config, config.profiles[0], backupPath, logStub, fileSystem)
@@ -60,6 +67,10 @@ class RestoreHandlerTest {
       deleteDirStub,
       createDirsStub,
       copy,
+      changeOwnerAndAttrsStub,
+      getMetadataStub,
+      readStub,
+      writeStub,
       walkStub
     )
     val result = RestoreHandler.restore(config, config.profiles[0], backupPath, logStub, fileSystem)
@@ -78,6 +89,10 @@ class RestoreHandlerTest {
       deleteDirStub,
       createDirsStub,
       copy,
+      changeOwnerAndAttrsStub,
+      getMetadataStub,
+      readStub,
+      writeStub,
       walkStub
     )
     val result = RestoreHandler.restore(config, config.profiles[0], backupPath, logStub, fileSystem)
@@ -106,6 +121,10 @@ class RestoreHandlerTest {
       deleteDirStub,
       createDirsStub,
       copy,
+      changeOwnerAndAttrsStub,
+      getMetadataStub,
+      readStub,
+      writeStub,
       walkStub
     )
     val result = RestoreHandler.restore(config, config.profiles[0], backupPath, logStub, fileSystem)
@@ -144,6 +163,10 @@ class RestoreHandlerTest {
       deleteDirStub,
       createDirsStub,
       copy,
+      changeOwnerAndAttrsStub,
+      getMetadataStub,
+      readStub,
+      writeStub,
       walkStub
     )
     val result = RestoreHandler.restore(config, config.profiles[0], backupPath, logStub, fileSystem)

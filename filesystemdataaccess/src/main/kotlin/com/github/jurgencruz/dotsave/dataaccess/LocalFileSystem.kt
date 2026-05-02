@@ -1,12 +1,20 @@
 package com.github.jurgencruz.dotsave.dataaccess
 
+import com.github.jurgencruz.dotsave.FileMetaData
+import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.nio.file.attribute.PosixFileAttributeView
+import java.nio.file.attribute.PosixFilePermissions
 import kotlin.io.path.exists
+import kotlin.io.path.getOwner
+import kotlin.io.path.getPosixFilePermissions
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
+import kotlin.io.path.setOwner
+import kotlin.io.path.setPosixFilePermissions
 import kotlin.streams.asSequence
 
 /**
@@ -14,13 +22,6 @@ import kotlin.streams.asSequence
  * @constructor Create a new File System object.
  */
 object LocalFileSystem {
-  /**
-   * Read a file and return as string.
-   * @param path The path of the file.
-   * @return A result object with the contents of the file as string if successful or exception if error.
-   */
-  fun read(path: Path) = path.runCatching { toFile().readText(Charsets.UTF_8) }
-
   fun getFileSystem(dryRun: Boolean): FileSystem {
     return if (dryRun)
       FileSystem(
@@ -30,6 +31,10 @@ object LocalFileSystem {
         ::deleteDir,
         ::createDirectories,
         ::copyFile,
+        ::changeOwnerAndAttrs,
+        ::getMetadata,
+        ::read,
+        ::write,
         ::walk
       )
     else
@@ -40,6 +45,10 @@ object LocalFileSystem {
         ::dryRunDeleteDir,
         ::dryRunCreateDirectories,
         ::dryRunCopyFile,
+        ::dryRunChangeOwnerAndAttrs,
+        ::getMetadata,
+        ::read,
+        ::dryRunWrite,
         ::walk
       )
   }
@@ -63,5 +72,26 @@ object LocalFileSystem {
   )
 
   private fun dryRunCopyFile(srcPath: Path, destPath: Path) {}
+  private fun changeOwnerAndAttrs(path: Path, metadata: FileMetaData) {
+    val service = FileSystems.getDefault().userPrincipalLookupService
+    val group = service.lookupPrincipalByGroupName(metadata.owner)
+    val owner = service.lookupPrincipalByName(metadata.owner)
+    path.setOwner(owner)
+    Files.getFileAttributeView(path, PosixFileAttributeView::class.java, LinkOption.NOFOLLOW_LINKS).setGroup(group)
+    path.setPosixFilePermissions(PosixFilePermissions.fromString(metadata.permissions))
+  }
+
+  private fun dryRunChangeOwnerAndAttrs(path: Path, metadata: FileMetaData) {}
+  private fun getMetadata(path: Path) = FileMetaData(
+    path.getOwner(LinkOption.NOFOLLOW_LINKS)!!.name,
+    path.getPosixFilePermissions(LinkOption.NOFOLLOW_LINKS).toString()
+  )
+
+  private fun read(path: Path) = runCatching { path.toFile().readText(Charsets.UTF_8) }
+  private fun write(path: Path, data: String) = runCatching {
+    path.toFile().writeText(data, Charsets.UTF_8)
+  }
+
+  private fun dryRunWrite(path: Path, data: String) = Result.success(Unit)
   private fun walk(path: Path, maxDepth: Int): Sequence<Path> = Files.walk(path, maxDepth).asSequence()
 }

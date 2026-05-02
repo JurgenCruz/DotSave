@@ -19,6 +19,8 @@ object ArgsParser {
   private const val RESTORE_LONG = "--restore"
   private const val PROFILE_SHORT = "-p"
   private const val PROFILE_LONG = "--profile"
+  private const val OWNER_SHORT = "-o"
+  private const val OWNER_LONG = "--owner"
 
   /**
    * Parse the console arguments.
@@ -31,6 +33,7 @@ object ArgsParser {
     var action = Action.USAGE
     var path = ""
     var profile: String? = null
+    var owner: String? = null
     var i = 0
     while (i < args.size) {
       val arg = args[i]
@@ -41,14 +44,14 @@ object ArgsParser {
           if (action != Action.USAGE) {
             return Result.failure(Exception("You can only specify one action"))
           }
-          return Result.success(ArgsParseResult(Action.USAGE, "", false, null, false))
+          return Result.success(ArgsParseResult(Action.USAGE, "", false, null, false, null))
         }
 
         shouldShowVersion(arg) -> {
           if (action != Action.USAGE) {
             return Result.failure(Exception("You can only specify one action"))
           }
-          return Result.success(ArgsParseResult(Action.VERSION, "", false, null, false))
+          return Result.success(ArgsParseResult(Action.VERSION, "", false, null, false, null))
         }
 
         isVerbose(arg)         -> {
@@ -94,10 +97,21 @@ object ArgsParser {
           ++i
         }
 
+        isOwner(arg)           -> {
+          if (owner != null) {
+            return Result.failure(Exception("You can only specify one owner"))
+          }
+          if (i >= args.size) {
+            return Result.failure(Exception("No owner specified"))
+          }
+          owner = args[i]
+          ++i
+        }
+
         else                   -> return Result.failure(Exception("Unrecognized argument: $arg"))
       }
     }
-    return Result.success(ArgsParseResult(action, path, verbose, profile, dryRun))
+    return Result.success(ArgsParseResult(action, path, verbose, profile, dryRun, owner))
   }
 
   private fun shouldShowUsage(arg: String): Boolean = arg == HELP_SHORT || arg == HELP_LONG
@@ -107,4 +121,5 @@ object ArgsParser {
   private fun isSave(arg: String): Boolean = arg == BACKUP_SHORT || arg == BACKUP_LONG
   private fun isApply(arg: String): Boolean = arg == RESTORE_SHORT || arg == RESTORE_LONG
   private fun isProfileName(arg: String): Boolean = arg == PROFILE_SHORT || arg == PROFILE_LONG
+  private fun isOwner(arg: String): Boolean = arg == OWNER_SHORT || arg == OWNER_LONG
 }

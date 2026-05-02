@@ -2,6 +2,7 @@ package com.github.jurgencruz.dotsave
 
 import com.github.jurgencruz.dotsave.config.Config
 import com.github.jurgencruz.dotsave.config.EnvVarReplacer
+import com.github.jurgencruz.dotsave.dataaccess.FileSystem
 import com.github.jurgencruz.dotsave.dataaccess.LocalFileSystem
 import com.github.jurgencruz.dotsave.logging.ConsoleLogger
 import com.github.jurgencruz.dotsave.logging.LogLevel
@@ -24,14 +25,14 @@ object Application {
    */
   @JvmStatic
   fun main(args: Array<String>) {
-    ArgsParser.parse(args).fold({ (action, configFilePath, verbose, profileName, dryRun) ->
+    ArgsParser.parse(args).fold({ (action, configFilePath, verbose, profileName, dryRun, owner) ->
       val log = if (verbose) ConsoleLogger::verboseLog else ConsoleLogger::log
       when (action) {
         Action.USAGE   -> printUsage()
         Action.VERSION -> printVersion()
         Action.BACKUP  -> {
           printFlags(verbose, dryRun, action, configFilePath, profileName)
-          backup(configFilePath, profileName, log, dryRun)
+          backup(configFilePath, profileName, owner ?: System.getProperty("user.name"), log, dryRun)
         }
 
         Action.RESTORE -> {
@@ -46,9 +47,9 @@ object Application {
     })
   }
 
-  private fun backup(configFilePath: String, profileName: String?, log: (LogLevel, String) -> Unit, dryRun: Boolean) {
-    getContext(configFilePath, profileName).flatMap { (path, config, profile) ->
-      BackupHandler.backup(config, profile, path, log, LocalFileSystem.getFileSystem(dryRun))
+  private fun backup(configFilePath: String, profileName: String?, owner: String, log: (LogLevel, String) -> Unit, dryRun: Boolean) {
+    getContext(configFilePath, profileName, dryRun).flatMap { (path, config, profile, fileSystem) ->
+      BackupHandler.backup(config, profile, path, owner, log, fileSystem)
     }.fold({
       printMissingFiles(it)
     }, {
@@ -58,22 +59,26 @@ object Application {
   }
 
   private fun restore(configFilePath: String, profileName: String?, log: (LogLevel, String) -> Unit, dryRun: Boolean) {
-    getContext(configFilePath, profileName).flatMap { (path, config, profile) ->
-      RestoreHandler.restore(config, profile, path, log, LocalFileSystem.getFileSystem(dryRun))
+    getContext(configFilePath, profileName, dryRun).flatMap { (path, config, profile, fileSystem) ->
+      RestoreHandler.restore(config, profile, path, log, fileSystem)
     }.onFailure {
       ConsoleLogger.printErrors(it)
       exitProcess(3)
     }
   }
 
-  private fun getContext(configFilePath: String, profileName: String?) = toSafePath(configFilePath).flatMap { path ->
-    getConfig(path).map { path to it }
-  }.flatMap { (path, config) ->
-    config.selectProfile(profileName).map { profile -> Context(path.absolute().parent, config, profile) }
+  private fun getContext(configFilePath: String, profileName: String?, dryRun: Boolean) = toSafePath(configFilePath).flatMap { path ->
+    val fileSystem = LocalFileSystem.getFileSystem(dryRun)
+    getConfig(path, fileSystem).map { Triple(path, it, fileSystem) }
+  }.flatMap { (path, config, fileSystem) ->
+    config.selectProfile(profileName).map { profile -> Context(path.absolute().parent, config, profile, fileSystem) }
   }
 
-  private fun getConfig(path: Path) = readConfig(path).flatMap(EnvVarReplacer::replaceEnvVars).mapCatching { it.apply { validate() } }
-  private fun readConfig(path: Path) = LocalFileSystem.read(path).flatMap<Config, String>(::deserialize)
+  private fun getConfig(path: Path, fileSystem: FileSystem) = readConfig(path, fileSystem)
+    .flatMap(EnvVarReplacer::replaceEnvVars)
+    .mapCatching { it.apply { validate() } }
+
+  private fun readConfig(path: Path, fileSystem: FileSystem) = fileSystem.read(path).flatMap<Config, String>(::deserialize)
   private fun printMissingFiles(missingFiles: List<Path>) {
     if (missingFiles.isEmpty()) {
       println("No files found that were not marked up for backup or ignored.")

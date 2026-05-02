@@ -18,8 +18,12 @@ class BackupHandlerTest {
   val isFileStub = { path: Path -> path.name.startsWith("file") }
   val deleteDirStub = { _: Path -> true }
   val createDirsStub = { _: Path -> }
-  val walkStub = { p: Path, _: Int -> sequenceOf(p) }
   val copyStub = { _: Path, _: Path -> }
+  val changeOwnerAndAttrsStub = { _: Path, _: FileMetaData -> }
+  val getMetadataStub = { _: Path -> FileMetaData("owner", "r--------") }
+  val readStub = { _: Path -> Result.success("") }
+  val writeStub = { _: Path, _: String -> Result.success(Unit) }
+  val walkStub = { p: Path, _: Int -> sequenceOf(p) }
 
   @Test
   fun backupShouldCopyFilesToCorrectDestination() {
@@ -33,9 +37,13 @@ class BackupHandlerTest {
       deleteDirStub,
       createDirsStub,
       copy,
+      changeOwnerAndAttrsStub,
+      getMetadataStub,
+      readStub,
+      writeStub,
       walkStub
     )
-    val result = BackupHandler.backup(config, config.profiles[0], backupPath, logStub, fileSystem)
+    val result = BackupHandler.backup(config, config.profiles[0], backupPath, "owner", logStub, fileSystem)
     assertThat(result.exceptionOrNull()).isNull()
     assertThat(copyList).hasSize(2)
     assertThat(copyList).zipSatisfy(
@@ -50,6 +58,68 @@ class BackupHandlerTest {
   }
 
   @Test
+  fun backupShouldChangeOwnerAndPermissionsOfBackedUpFiles() {
+    val config = Config(listOf(getProfile1(), getProfile2()))
+    val copyList = mutableListOf<Pair<Path, FileMetaData>>()
+    val changeOwnerAndAttrs: (Path, FileMetaData) -> Unit = { p, m -> copyList.add(p to m) }
+    val fileSystem = FileSystem(
+      existsStub,
+      isDirectoryStub,
+      isFileStub,
+      deleteDirStub,
+      createDirsStub,
+      copyStub,
+      changeOwnerAndAttrs,
+      getMetadataStub,
+      readStub,
+      writeStub,
+      walkStub
+    )
+    val result = BackupHandler.backup(config, config.profiles[0], backupPath, "owner", logStub, fileSystem)
+    assertThat(result.exceptionOrNull()).isNull()
+    assertThat(copyList).hasSize(2)
+    val expectedMetadata = FileMetaData("owner", "r--r--r--")
+    assertThat(copyList).zipSatisfy(
+      listOf(
+        "backup/program1/file1" to expectedMetadata,
+        "backup/program1/folder2" to expectedMetadata
+      )
+    ) { (srcPath, metadata), (expectedSrc, expectedMetadata) ->
+      assertThat(srcPath).hasToString(expectedSrc)
+      assertThat(metadata).isEqualTo(expectedMetadata)
+    }
+  }
+
+  @Test
+  fun backupShouldWriteFileMetadataOfBackedUpFiles() {
+    val config = Config(listOf(getProfile1(), getProfile2()))
+    var wp: Path? = null
+    var ms: String? = null
+    val write: (Path, String) -> Result<Unit> = { p, s ->
+      wp = p
+      ms = s
+      Result.success(Unit)
+    }
+    val fileSystem = FileSystem(
+      existsStub,
+      isDirectoryStub,
+      isFileStub,
+      deleteDirStub,
+      createDirsStub,
+      copyStub,
+      changeOwnerAndAttrsStub,
+      getMetadataStub,
+      readStub,
+      write,
+      walkStub
+    )
+    val result = BackupHandler.backup(config, config.profiles[0], backupPath, "owner", logStub, fileSystem)
+    assertThat(result.exceptionOrNull()).isNull()
+    assertThat(wp).hasToString("backup/program1.json")
+    assertThat(ms).isEqualTo("""{"/root1/file1":{"owner":"owner","permissions":"r--------"},"/root1/folder2":{"owner":"owner","permissions":"r--------"}}""")
+  }
+
+  @Test
   fun backupShouldFailIfCannotCreateDestinationDir() {
     val config = Config(listOf(getProfile1()))
     val exists = { _: Path -> false }
@@ -61,9 +131,13 @@ class BackupHandlerTest {
       deleteDirStub,
       createDirectories,
       copyStub,
+      changeOwnerAndAttrsStub,
+      getMetadataStub,
+      readStub,
+      writeStub,
       walkStub
     )
-    val result = BackupHandler.backup(config, config.profiles[0], backupPath, logStub, fileSystem)
+    val result = BackupHandler.backup(config, config.profiles[0], backupPath, "owner", logStub, fileSystem)
     assertThat(result.exceptionOrNull()).hasMessage("test")
   }
 
@@ -78,9 +152,13 @@ class BackupHandlerTest {
       deleteDirStub,
       createDirsStub,
       copy,
+      changeOwnerAndAttrsStub,
+      getMetadataStub,
+      readStub,
+      writeStub,
       walkStub
     )
-    val result = BackupHandler.backup(config, config.profiles[0], backupPath, logStub, fileSystem)
+    val result = BackupHandler.backup(config, config.profiles[0], backupPath, "owner", logStub, fileSystem)
     assertThat(result.exceptionOrNull()).hasMessage("test")
   }
 
@@ -96,9 +174,13 @@ class BackupHandlerTest {
       deleteDirStub,
       createDirsStub,
       copy,
+      changeOwnerAndAttrsStub,
+      getMetadataStub,
+      readStub,
+      writeStub,
       walkStub
     )
-    val result = BackupHandler.backup(config, config.profiles[0], backupPath, logStub, fileSystem)
+    val result = BackupHandler.backup(config, config.profiles[0], backupPath, "owner", logStub, fileSystem)
     val exception = result.exceptionOrNull()
     assertThat(exception).hasMessage("test1")
     assertThat(exception!!.suppressed).zipSatisfy(arrayOf("test2", "test3", "test4")) { a, b ->
@@ -138,9 +220,13 @@ class BackupHandlerTest {
       deleteDirStub,
       createDirsStub,
       copyStub,
+      changeOwnerAndAttrsStub,
+      getMetadataStub,
+      readStub,
+      writeStub,
       walk
     )
-    val result = BackupHandler.backup(config, config.profiles[0], backupPath, logStub, fileSystem)
+    val result = BackupHandler.backup(config, config.profiles[0], backupPath, "owner", logStub, fileSystem)
     assertThat(result.exceptionOrNull()).isNull()
     assertThat(result.getOrThrow().map(Path::toString)).containsExactly("/root1/file3", "/root1/folder4/file1", "/root1/folder4/file2")
   }
@@ -194,9 +280,13 @@ class BackupHandlerTest {
       deleteDirStub,
       createDirsStub,
       copy,
+      changeOwnerAndAttrsStub,
+      getMetadataStub,
+      readStub,
+      writeStub,
       walk
     )
-    val result = BackupHandler.backup(config, config.profiles[0], backupPath, logStub, fileSystem)
+    val result = BackupHandler.backup(config, config.profiles[0], backupPath, "owner", logStub, fileSystem)
     assertThat(result.exceptionOrNull()).isNull()
     assertThat(result.getOrThrow().map(Path::toString)).containsExactly("/root/missing1")
     assertThat(copyList).hasSize(6)
@@ -243,9 +333,13 @@ class BackupHandlerTest {
       deleteDirStub,
       createDirsStub,
       copy,
+      changeOwnerAndAttrsStub,
+      getMetadataStub,
+      readStub,
+      writeStub,
       walk
     )
-    val result = BackupHandler.backup(config, config.profiles[0], backupPath, logStub, fileSystem)
+    val result = BackupHandler.backup(config, config.profiles[0], backupPath, "owner", logStub, fileSystem)
     assertThat(result.exceptionOrNull()).isNull()
     assertThat(result.getOrThrow().map(Path::toString)).containsExactly("/root3/missing1", "/root3/missing2")
     assertThat(copyList).hasSize(6)

@@ -6,6 +6,7 @@ import com.github.jurgencruz.dotsave.dataaccess.FileSystem
 import com.github.jurgencruz.dotsave.logging.LogLevel
 import com.github.jurgencruz.dotsave.utils.flatMap
 import com.github.jurgencruz.dotsave.utils.mergeFailures
+import com.github.jurgencruz.dotsave.utils.serialize
 import java.nio.file.Path
 import kotlin.io.path.name
 
@@ -14,6 +15,8 @@ import kotlin.io.path.name
  */
 @Suppress("HardCodedStringLiteral")
 object BackupHandler {
+  private const val PERMISSIONS = "r--r--r--"
+
   /**
    * Backup files based on the configuration on the specified path.
    * @param config The backup configuration.
@@ -27,9 +30,10 @@ object BackupHandler {
     config: Config,
     profile: Profile,
     backupPath: Path,
+    owner: String,
     log: (LogLevel, String) -> Unit,
     fileSystem: FileSystem
-  ) = backupWithLists(config, profile, backupPath, log, fileSystem).map { (roots, copiedPaths, ignoredPaths) ->
+  ) = backupWithLists(config, profile, backupPath, owner, log, fileSystem).map { (roots, copiedPaths, ignoredPaths) ->
     calculateMissingFiles(roots, copiedPaths, ignoredPaths, fileSystem)
   }
 
@@ -37,10 +41,11 @@ object BackupHandler {
     config: Config,
     profile: Profile,
     backupPath: Path,
+    owner: String,
     log: (LogLevel, String) -> Unit,
     fileSystem: FileSystem
   ): Result<Triple<MutableList<Path>, MutableSet<Path>, MutableSet<Path>>> = profile.mergeInheritedProfiles(config).flatMap { p ->
-    runIncludedProfiles(p, config, backupPath, log, fileSystem).map { p to it }
+    runIncludedProfiles(p, config, backupPath, owner, log, fileSystem).map { p to it }
   }.flatMap { (p, lists) ->
     runCatching { backupPath.resolve(p.name) to (p to lists) }
   }.onSuccess { (path) ->
@@ -50,7 +55,7 @@ object BackupHandler {
   }.onSuccess { (p, _) ->
     log(LogLevel.INFO, "Backing up profile: ${p.name}")
   }.flatMap { (profile, lists) ->
-    backupFiles(profile, backupPath, log, fileSystem).map { new ->
+    backupFiles(profile, backupPath, owner, log, fileSystem).map { new ->
       calculateRootsAndFiles(
         lists.first,
         lists.second,
@@ -68,10 +73,11 @@ object BackupHandler {
     profile: Profile,
     config: Config,
     backupPath: Path,
+    owner: String,
     log: (LogLevel, String) -> Unit,
     fileSystem: FileSystem
   ): Result<Triple<MutableList<Path>, MutableSet<Path>, MutableSet<Path>>> = profile.includeProfiles.asSequence().map { name ->
-    backupWithLists(config, config.profiles.first { (n) -> n == name }, backupPath, log, fileSystem)
+    backupWithLists(config, config.profiles.first { (n) -> n == name }, backupPath, owner, log, fileSystem)
   }.mergeFailures().map { list ->
     val roots = mutableListOf<Path>()
     val copiedPaths = mutableSetOf<Path>()
@@ -119,18 +125,26 @@ object BackupHandler {
   private fun backupFiles(
     profile: Profile,
     backupPath: Path,
+    owner: String,
     log: (LogLevel, String) -> Unit,
     fileSystem: FileSystem
   ) = backupPath.resolve(profile.name).let { bPath ->
+    val metaDatas = mutableMapOf<String, FileMetaData>()
     profile.includePath.asSequence().map { inc ->
       val srcPath = profile.rootPath.resolve(inc)
       val desPath = bPath.resolve(inc)
       log(LogLevel.INFO, "Copying '$srcPath' to '$desPath'")
-      copy(srcPath, desPath, fileSystem).map { srcPath }
-    }.mergeFailures()
+      copy(srcPath, desPath, fileSystem, FileMetaData(owner, PERMISSIONS)).onSuccess {
+        metaDatas.putAll(it)
+      }.map { srcPath }
+    }.mergeFailures().flatMap { list ->
+      serialize(metaDatas).map { it to list }
+    }.flatMap { (metaDatas, list) ->
+      fileSystem.write(backupPath.resolve("${profile.name}.json"), metaDatas).map { list }
+    }
   }
 
-  private fun copy(srcPath: Path, destPath: Path, fileSystem: FileSystem): Result<Unit> {
+  private fun copy(srcPath: Path, destPath: Path, fileSystem: FileSystem, metadata: FileMetaData): Result<Map<String, FileMetaData>> {
     if (!fileSystem.exists(srcPath)) {
       return Result.failure(IllegalStateException("Path '$srcPath' does not exist, cannot copy to '$destPath'."))
     }
@@ -138,16 +152,24 @@ object BackupHandler {
       runCatching {
         fileSystem.createParentDirs(destPath.parent, srcPath.parent)
         fileSystem.copyFile(srcPath, destPath)
+        fileSystem.changeOwnerAndAttrs(destPath, metadata)
+        mapOf("$srcPath" to fileSystem.getMetadata(srcPath))
       }
     } else {
       runCatching {
         fileSystem.createParentDirs(destPath.parent, srcPath.parent)
         fileSystem.copyFile(srcPath, destPath)
+        fileSystem.changeOwnerAndAttrs(destPath, metadata)
         fileSystem.walk(srcPath, 1)
       }.flatMap { files ->
         files.drop(1).map { srcFile ->
-          copy(srcFile, destPath.resolve(srcFile.name), fileSystem)
-        }.mergeFailures().map { }
+          copy(srcFile, destPath.resolve(srcFile.name), fileSystem, metadata)
+        }.mergeFailures().map {
+          buildMap {
+            it.forEach(::putAll)
+            put("$srcPath", fileSystem.getMetadata(srcPath))
+          }
+        }
       }
     }
   }
