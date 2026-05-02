@@ -32,7 +32,14 @@ object BackupHandler {
     owner: String,
     log: (LogLevel, String) -> Unit,
     fileSystem: FileSystem
-  ) = backupWithLists(config, profile, backupPath, owner, log, fileSystem).map { (roots, copiedPaths, ignoredPaths) ->
+  ) = backupWithLists(
+    config,
+    profile,
+    backupPath,
+    FileMetaData(owner, PERMISSIONS),
+    log,
+    fileSystem
+  ).map { (roots, copiedPaths, ignoredPaths) ->
     calculateMissingFiles(roots, copiedPaths, ignoredPaths, fileSystem)
   }
 
@@ -40,21 +47,21 @@ object BackupHandler {
     config: Config,
     profile: Profile,
     backupPath: Path,
-    owner: String,
+    metaData: FileMetaData,
     log: (LogLevel, String) -> Unit,
     fileSystem: FileSystem
   ): Result<Triple<MutableList<Path>, MutableSet<Path>, MutableSet<Path>>> = profile.mergeInheritedProfiles(config).flatMap { p ->
-    runIncludedProfiles(p, config, backupPath, owner, log, fileSystem).map { p to it }
+    runIncludedProfiles(p, config, backupPath, metaData, log, fileSystem).map { p to it }
   }.flatMap { (p, lists) ->
     runCatching { backupPath.resolve(p.name) to (p to lists) }
   }.onSuccess { (path) ->
     log(LogLevel.INFO, "Recreating directory: $path")
-  }.flatMap { (path, p) ->
-    recreateDir(path, fileSystem, owner).map { p }
+  }.flatMap { (path, pair) ->
+    recreateDir(path, fileSystem, metaData).map { pair }
   }.onSuccess { (p, _) ->
     log(LogLevel.INFO, "Backing up profile: ${p.name}")
   }.flatMap { (profile, lists) ->
-    backupFiles(profile, backupPath, owner, log, fileSystem).map { new ->
+    backupFiles(profile, backupPath, metaData, log, fileSystem).map { new ->
       calculateRootsAndFiles(
         lists.first,
         lists.second,
@@ -72,11 +79,11 @@ object BackupHandler {
     profile: Profile,
     config: Config,
     backupPath: Path,
-    owner: String,
+    metaData: FileMetaData,
     log: (LogLevel, String) -> Unit,
     fileSystem: FileSystem
   ): Result<Triple<MutableList<Path>, MutableSet<Path>, MutableSet<Path>>> = profile.includeProfiles.asSequence().map { name ->
-    backupWithLists(config, config.profiles.first { (n) -> n == name }, backupPath, owner, log, fileSystem)
+    backupWithLists(config, config.profiles.first { (n) -> n == name }, backupPath, metaData, log, fileSystem)
   }.mergeFailures().map { list ->
     val roots = mutableListOf<Path>()
     val copiedPaths = mutableSetOf<Path>()
@@ -109,7 +116,7 @@ object BackupHandler {
     ignoredPaths.addAll(newIgnoredPaths)
   }
 
-  private fun recreateDir(path: Path, fileSystem: FileSystem, owner: String): Result<Unit> {
+  private fun recreateDir(path: Path, fileSystem: FileSystem, metaData: FileMetaData): Result<Unit> {
     if (fileSystem.exists(path)) {
       if (!fileSystem.isDirectory(path)) {
         return Result.failure(IllegalStateException("Path '$path' is not a directory, cannot recreate."))
@@ -120,20 +127,20 @@ object BackupHandler {
     }
     return runCatching {
       fileSystem.createDirectory(path)
-      fileSystem.changeOwnerAndAttrs(path, FileMetaData(owner, PERMISSIONS))
+      fileSystem.changeOwnerAndAttrs(path, metaData)
     }
   }
 
   private fun backupFiles(
     profile: Profile,
     backupPath: Path,
-    owner: String,
+    metaData: FileMetaData,
     log: (LogLevel, String) -> Unit,
     fileSystem: FileSystem
   ) = backupPath.resolve(profile.name).let { bPath ->
     val metaDatas = mutableMapOf<String, FileMetaData>()
     profile.includePath.asSequence().map { inc ->
-      copy(profile.rootPath, bPath, inc, fileSystem, FileMetaData(owner, PERMISSIONS), log).onSuccess { (map, _) ->
+      copy(profile.rootPath, bPath, inc, fileSystem, metaData, log).onSuccess { (map, _) ->
         metaDatas.putAll(map)
       }.map { (_, srcPath) -> srcPath }
     }.mergeFailures().flatMap { list ->
@@ -148,7 +155,7 @@ object BackupHandler {
     backupPath: Path,
     relativePath: Path,
     fileSystem: FileSystem,
-    metadata: FileMetaData,
+    metaData: FileMetaData,
     log: (LogLevel, String) -> Unit
   ): Result<Pair<Map<String, FileMetaData>, Path>> {
     val srcPath = rootPath.resolve(relativePath)
@@ -159,21 +166,21 @@ object BackupHandler {
     }
     return if (fileSystem.isFile(srcPath)) {
       runCatching {
-        val map = createParentDirs(srcPath.parent, destPath.parent, fileSystem, metadata)
+        val map = createParentDirs(srcPath.parent, destPath.parent, fileSystem, metaData)
         fileSystem.copyFile(srcPath, destPath)
-        fileSystem.changeOwnerAndAttrs(destPath, metadata)
+        fileSystem.changeOwnerAndAttrs(destPath, metaData)
         map["$srcPath"] = fileSystem.getMetadata(srcPath)
         map to srcPath
       }
     } else {
       runCatching {
-        val map = createParentDirs(srcPath.parent, destPath.parent, fileSystem, metadata)
+        val map = createParentDirs(srcPath.parent, destPath.parent, fileSystem, metaData)
         fileSystem.copyFile(srcPath, destPath)
-        fileSystem.changeOwnerAndAttrs(destPath, metadata)
+        fileSystem.changeOwnerAndAttrs(destPath, metaData)
         fileSystem.walk(srcPath, 1) to map
       }.flatMap { (files, map) ->
         files.drop(1).map { walkFile ->
-          copy(srcPath, destPath, walkFile.fileName, fileSystem, metadata, log)
+          copy(srcPath, destPath, walkFile.fileName, fileSystem, metaData, log)
         }.mergeFailures().map {
           it.map { (map, _) -> map }
         }.map { maps ->
@@ -191,11 +198,11 @@ object BackupHandler {
     srcPath: Path?,
     destPath: Path?,
     fileSystem: FileSystem,
-    metadata: FileMetaData
+    metaData: FileMetaData
   ): MutableMap<String, FileMetaData> = if (destPath != null && srcPath != null && !fileSystem.exists(destPath)) {
-    val map = createParentDirs(srcPath.parent, destPath.parent, fileSystem, metadata)
+    val map = createParentDirs(srcPath.parent, destPath.parent, fileSystem, metaData)
     fileSystem.copyFile(srcPath, destPath)
-    fileSystem.changeOwnerAndAttrs(destPath, metadata)
+    fileSystem.changeOwnerAndAttrs(destPath, metaData)
     map["$srcPath"] = fileSystem.getMetadata(srcPath)
     map
   } else {
