@@ -146,7 +146,10 @@ object BackupHandler {
     }.mergeFailures().flatMap { list ->
       serialize(metaDatas).map { it to list }
     }.flatMap { (metaDatas, list) ->
-      fileSystem.write(backupPath.resolve("${profile.name}.json"), metaDatas).map { list }
+      val mp = backupPath.resolve("${profile.name}.json")
+      fileSystem.write(mp, metaDatas).mapCatching {
+        fileSystem.changeOwnerAndAttrs(mp, metaData)
+      }.map { list }
     }
   }
 
