@@ -69,7 +69,8 @@ object BackupHandler {
         listOf(profile.rootPath),
         new,
         profile.ignorePath.map { profile.rootPath.resolve(it) },
-        log
+        log,
+        fileSystem
       )
       lists
     }
@@ -89,7 +90,7 @@ object BackupHandler {
     val copiedPaths = mutableSetOf<Path>()
     val ignoredPaths = mutableSetOf<Path>()
     list.forEach { (r, c, i) ->
-      calculateRootsAndFiles(roots, copiedPaths, ignoredPaths, r, c.toList(), i.toList(), log)
+      calculateRootsAndFiles(roots, copiedPaths, ignoredPaths, r, c.toList(), i.toList(), log, fileSystem)
     }
     Triple(roots, copiedPaths, ignoredPaths)
   }
@@ -101,7 +102,8 @@ object BackupHandler {
     newRoots: List<Path>,
     newCopiedPaths: List<Path>,
     newIgnoredPaths: List<Path>,
-    log: (LogLevel, String) -> Unit
+    log: (LogLevel, String) -> Unit,
+    fileSystem: FileSystem
   ) {
     newRoots.forEach { newRoot ->
       if (!roots.any { newRoot.startsWith(it) }) {
@@ -110,7 +112,7 @@ object BackupHandler {
       }
     }
     newCopiedPaths.forEach {
-      if (!copiedPaths.add(it)) {
+      if (!copiedPaths.add(it) && !fileSystem.isDirectory(it)) {
         log(LogLevel.ERROR, "File '$it' is duplicated in the backup.")
       }
     }
