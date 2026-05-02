@@ -29,7 +29,7 @@ object LocalFileSystem {
         ::isDirectory,
         ::isFile,
         ::deleteDir,
-        ::createDirectories,
+        ::createDirectory,
         ::copyFile,
         ::changeOwnerAndAttrs,
         ::getMetadata,
@@ -58,8 +58,8 @@ object LocalFileSystem {
   private fun isFile(path: Path) = path.isRegularFile()
   private fun deleteDir(path: Path) = path.toFile().deleteRecursively()
   private fun dryRunDeleteDir(path: Path) = true
-  private fun createDirectories(path: Path) {
-    Files.createDirectories(path)
+  private fun createDirectory(path: Path) {
+    Files.createDirectory(path)
   }
 
   private fun dryRunCreateDirectories(path: Path) {}

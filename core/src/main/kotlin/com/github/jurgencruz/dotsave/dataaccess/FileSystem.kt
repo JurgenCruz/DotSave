@@ -13,7 +13,7 @@ import java.nio.file.Path
  * @property isDirectory Determines if the given path is a directory.
  * @property isFile Determines if the given path is a file.
  * @property deleteDir Deletes the directory at the specified path.
- * @property createDirectories Creates all directories necessary to make the given path valid.
+ * @property createDirectory Creates the directory at the specified path.
  * @property copyFile Copies a file from one location to another.
  * @property changeOwnerAndAttrs Changes the owner and attributes of the specified path using provided metadata.
  * @property getMetadata Retrieves metadata for the specified path.
@@ -25,7 +25,7 @@ data class FileSystem(
   val isDirectory: (Path) -> Boolean,
   val isFile: (Path) -> Boolean,
   val deleteDir: (Path) -> Boolean,
-  val createDirectories: (Path) -> Unit,
+  val createDirectory: (Path) -> Unit,
   val copyFile: (Path, Path) -> Unit,
   val changeOwnerAndAttrs: (Path, FileMetaData) -> Unit,
   val getMetadata: (Path) -> FileMetaData,

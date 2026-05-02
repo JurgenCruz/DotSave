@@ -50,7 +50,7 @@ object BackupHandler {
   }.onSuccess { (path) ->
     log(LogLevel.INFO, "Recreating directory: $path")
   }.flatMap { (path, p) ->
-    recreateDir(path, fileSystem).map { p }
+    recreateDir(path, fileSystem, owner).map { p }
   }.onSuccess { (p, _) ->
     log(LogLevel.INFO, "Backing up profile: ${p.name}")
   }.flatMap { (profile, lists) ->
@@ -109,7 +109,7 @@ object BackupHandler {
     ignoredPaths.addAll(newIgnoredPaths)
   }
 
-  private fun recreateDir(path: Path, fileSystem: FileSystem): Result<Unit> {
+  private fun recreateDir(path: Path, fileSystem: FileSystem, owner: String): Result<Unit> {
     if (fileSystem.exists(path)) {
       if (!fileSystem.isDirectory(path)) {
         return Result.failure(IllegalStateException("Path '$path' is not a directory, cannot recreate."))
@@ -118,7 +118,10 @@ object BackupHandler {
         return Result.failure(IllegalStateException("Could not delete directory."))
       }
     }
-    return runCatching { fileSystem.createDirectories(path) }
+    return runCatching {
+      fileSystem.createDirectory(path)
+      fileSystem.changeOwnerAndAttrs(path, FileMetaData(owner, PERMISSIONS))
+    }
   }
 
   private fun backupFiles(
