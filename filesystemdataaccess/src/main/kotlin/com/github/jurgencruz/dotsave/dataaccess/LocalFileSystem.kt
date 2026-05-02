@@ -85,7 +85,7 @@ object LocalFileSystem {
   private fun dryRunChangeOwnerAndAttrs(path: Path, metadata: FileMetaData) {}
   private fun getMetadata(path: Path) = FileMetaData(
     path.getOwner(LinkOption.NOFOLLOW_LINKS)!!.name,
-    path.getPosixFilePermissions(LinkOption.NOFOLLOW_LINKS).toString()
+    PosixFilePermissions.toString(path.getPosixFilePermissions(LinkOption.NOFOLLOW_LINKS))
   )
 
   private fun read(path: Path) = runCatching { path.toFile().readText(Charsets.UTF_8) }
