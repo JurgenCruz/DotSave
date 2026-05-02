@@ -31,12 +31,12 @@ object Application {
         Action.USAGE   -> printUsage()
         Action.VERSION -> printVersion()
         Action.BACKUP  -> {
-          printFlags(verbose, dryRun, action, configFilePath, profileName)
+          printFlags(verbose, dryRun, action, configFilePath, profileName, owner)
           backup(configFilePath, profileName, owner ?: System.getProperty("user.name"), log, dryRun)
         }
 
         Action.RESTORE -> {
-          printFlags(verbose, dryRun, action, configFilePath, profileName)
+          printFlags(verbose, dryRun, action, configFilePath, profileName, owner)
           restore(configFilePath, profileName, log, dryRun)
         }
       }
@@ -88,13 +88,14 @@ object Application {
     }
   }
 
-  private fun printFlags(verbose: Boolean, dryRun: Boolean, action: Action, configFilePath: String, profileName: String?) {
+  private fun printFlags(verbose: Boolean, dryRun: Boolean, action: Action, configFilePath: String, profileName: String?, owner: String?) {
     if (verbose) {
       println("verbose mode: On")
       println("dry run mode: ${if (dryRun) "On" else "Off"}")
       println("action: $action")
       println("config path: $configFilePath")
       println("profile: ${profileName ?: "default"}")
+      println("owner: ${owner ?: "current user"}")
     }
   }
 
@@ -112,6 +113,7 @@ object Application {
     println("    -v, --verbose            Print extra information.")
     println("    -d, --dry-run            Simulate operation without actually touching the filesystem")
     println("    -p, --profile            Select which profile to execute.")
+    println("    -o, --owner              Set the owner of the backed-up files (default: current user).")
   }
 
   private fun printVersion() {
