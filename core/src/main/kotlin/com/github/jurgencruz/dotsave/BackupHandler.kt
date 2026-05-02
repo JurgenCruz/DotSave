@@ -139,18 +139,18 @@ object BackupHandler {
     log: (LogLevel, String) -> Unit,
     fileSystem: FileSystem
   ) = backupPath.resolve(profile.name).let { bPath ->
-    val metaDatas = mutableMapOf<String, FileMetaData>()
+    val metaDatas = mutableMapOf<Path, FileMetaData>()
     profile.includePath.asSequence().map { inc ->
-      copy(profile.rootPath, bPath, inc, fileSystem, metaData, log).onSuccess { (map, _) ->
+      copy(profile.rootPath, bPath, inc, fileSystem, metaData, log).onSuccess { map ->
         metaDatas.putAll(map)
-      }.map { (_, srcPath) -> srcPath }
-    }.mergeFailures().flatMap { list ->
-      serialize(metaDatas).map { it to list }
-    }.flatMap { (metaDatas, list) ->
+      }.map {}
+    }.mergeFailures().flatMap {
+      serialize(metaDatas.mapKeys { (key) -> "$key" })
+    }.flatMap { mds ->
       val mp = backupPath.resolve("${profile.name}.json")
-      fileSystem.write(mp, metaDatas).mapCatching {
+      fileSystem.write(mp, mds).mapCatching {
         fileSystem.changeOwnerAndAttrs(mp, metaData)
-      }.map { list }
+      }.map { metaDatas.keys.toList() }
     }
   }
 
@@ -161,7 +161,7 @@ object BackupHandler {
     fileSystem: FileSystem,
     metaData: FileMetaData,
     log: (LogLevel, String) -> Unit
-  ): Result<Pair<Map<String, FileMetaData>, Path>> {
+  ): Result<Map<Path, FileMetaData>> {
     val srcPath = rootPath.resolve(relativePath)
     val destPath = backupPath.resolve(relativePath)
     log(LogLevel.INFO, "Copying '$srcPath' to '$destPath'")
@@ -173,8 +173,8 @@ object BackupHandler {
         val map = createParentDirs(srcPath.parent, destPath.parent, fileSystem, metaData)
         fileSystem.copyFile(srcPath, destPath)
         fileSystem.changeOwnerAndAttrs(destPath, metaData)
-        map["$srcPath"] = fileSystem.getMetadata(srcPath)
-        map to srcPath
+        map[srcPath] = fileSystem.getMetadata(srcPath)
+        map
       }
     } else {
       runCatching {
@@ -185,14 +185,12 @@ object BackupHandler {
       }.flatMap { (files, map) ->
         files.drop(1).map { walkFile ->
           copy(srcPath, destPath, walkFile.fileName, fileSystem, metaData, log)
-        }.mergeFailures().map {
-          it.map { (map, _) -> map }
-        }.map { maps ->
+        }.mergeFailures().map { maps ->
           buildMap {
             putAll(map)
             maps.forEach(::putAll)
-            put("$srcPath", fileSystem.getMetadata(srcPath))
-          } to srcPath
+            put(srcPath, fileSystem.getMetadata(srcPath))
+          }
         }
       }
     }
@@ -203,11 +201,11 @@ object BackupHandler {
     destPath: Path?,
     fileSystem: FileSystem,
     metaData: FileMetaData
-  ): MutableMap<String, FileMetaData> = if (destPath != null && srcPath != null && !fileSystem.exists(destPath)) {
+  ): MutableMap<Path, FileMetaData> = if (destPath != null && srcPath != null && !fileSystem.exists(destPath)) {
     val map = createParentDirs(srcPath.parent, destPath.parent, fileSystem, metaData)
     fileSystem.copyFile(srcPath, destPath)
     fileSystem.changeOwnerAndAttrs(destPath, metaData)
-    map["$srcPath"] = fileSystem.getMetadata(srcPath)
+    map[srcPath] = fileSystem.getMetadata(srcPath)
     map
   } else {
     mutableMapOf()
@@ -225,5 +223,5 @@ object BackupHandler {
   }
 
   private fun notIncludedOrIgnored(copiedPaths: MutableSet<Path>, ignoredPaths: MutableSet<Path>, file: Path) =
-    !(ignoredPaths.any { file.startsWith(it) } || copiedPaths.any { file.startsWith(it) })
+    !(ignoredPaths.any { file.startsWith(it) } || copiedPaths.any { file == it })
 }
