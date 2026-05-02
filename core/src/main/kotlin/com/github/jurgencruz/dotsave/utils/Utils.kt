@@ -56,6 +56,16 @@ fun <T> Sequence<Result<T>>.mergeFailures(): Result<List<T>> {
   }
 }
 
+inline fun <reified A, reified B> splitListOfPairs(list: List<Pair<A, B>>): Pair<List<A>, List<B>> {
+  val listA = mutableListOf<A>()
+  val listB = mutableListOf<B>()
+  list.forEach { (first, second) ->
+    listA.add(first)
+    listB.add(second)
+  }
+  return listA to listB
+}
+
 inline fun <reified T> deserialize(string: String): Result<T> = runCatching {
   sJson.decodeFromString<T>(string)
 }

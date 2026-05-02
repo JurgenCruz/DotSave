@@ -8,7 +8,6 @@ import com.github.jurgencruz.dotsave.utils.flatMap
 import com.github.jurgencruz.dotsave.utils.mergeFailures
 import com.github.jurgencruz.dotsave.utils.serialize
 import java.nio.file.Path
-import kotlin.io.path.name
 
 /**
  * Handler for the backup process.
@@ -131,12 +130,9 @@ object BackupHandler {
   ) = backupPath.resolve(profile.name).let { bPath ->
     val metaDatas = mutableMapOf<String, FileMetaData>()
     profile.includePath.asSequence().map { inc ->
-      val srcPath = profile.rootPath.resolve(inc)
-      val desPath = bPath.resolve(inc)
-      log(LogLevel.INFO, "Copying '$srcPath' to '$desPath'")
-      copy(srcPath, desPath, fileSystem, FileMetaData(owner, PERMISSIONS)).onSuccess {
-        metaDatas.putAll(it)
-      }.map { srcPath }
+      copy(profile.rootPath, bPath, inc, fileSystem, FileMetaData(owner, PERMISSIONS), log).onSuccess { (map, _) ->
+        metaDatas.putAll(map)
+      }.map { (_, srcPath) -> srcPath }
     }.mergeFailures().flatMap { list ->
       serialize(metaDatas).map { it to list }
     }.flatMap { (metaDatas, list) ->
@@ -144,34 +140,63 @@ object BackupHandler {
     }
   }
 
-  private fun copy(srcPath: Path, destPath: Path, fileSystem: FileSystem, metadata: FileMetaData): Result<Map<String, FileMetaData>> {
+  private fun copy(
+    rootPath: Path,
+    backupPath: Path,
+    relativePath: Path,
+    fileSystem: FileSystem,
+    metadata: FileMetaData,
+    log: (LogLevel, String) -> Unit
+  ): Result<Pair<Map<String, FileMetaData>, Path>> {
+    val srcPath = rootPath.resolve(relativePath)
+    val destPath = backupPath.resolve(relativePath)
+    log(LogLevel.INFO, "Copying '$srcPath' to '$destPath'")
     if (!fileSystem.exists(srcPath)) {
       return Result.failure(IllegalStateException("Path '$srcPath' does not exist, cannot copy to '$destPath'."))
     }
     return if (fileSystem.isFile(srcPath)) {
       runCatching {
-        fileSystem.createParentDirs(destPath.parent, srcPath.parent)
+        val map = createParentDirs(srcPath.parent, destPath.parent, fileSystem, metadata)
         fileSystem.copyFile(srcPath, destPath)
         fileSystem.changeOwnerAndAttrs(destPath, metadata)
-        mapOf("$srcPath" to fileSystem.getMetadata(srcPath))
+        map["$srcPath"] = fileSystem.getMetadata(srcPath)
+        map to srcPath
       }
     } else {
       runCatching {
-        fileSystem.createParentDirs(destPath.parent, srcPath.parent)
+        val map = createParentDirs(srcPath.parent, destPath.parent, fileSystem, metadata)
         fileSystem.copyFile(srcPath, destPath)
         fileSystem.changeOwnerAndAttrs(destPath, metadata)
-        fileSystem.walk(srcPath, 1)
-      }.flatMap { files ->
-        files.drop(1).map { srcFile ->
-          copy(srcFile, destPath.resolve(srcFile.name), fileSystem, metadata)
+        fileSystem.walk(srcPath, 1) to map
+      }.flatMap { (files, map) ->
+        files.drop(1).map { walkFile ->
+          copy(srcPath, destPath, walkFile.fileName, fileSystem, metadata, log)
         }.mergeFailures().map {
+          it.map { (map, _) -> map }
+        }.map { maps ->
           buildMap {
-            it.forEach(::putAll)
+            putAll(map)
+            maps.forEach(::putAll)
             put("$srcPath", fileSystem.getMetadata(srcPath))
-          }
+          } to srcPath
         }
       }
     }
+  }
+
+  private fun createParentDirs(
+    srcPath: Path?,
+    destPath: Path?,
+    fileSystem: FileSystem,
+    metadata: FileMetaData
+  ): MutableMap<String, FileMetaData> = if (destPath != null && srcPath != null && !fileSystem.exists(destPath)) {
+    val map = createParentDirs(srcPath.parent, destPath.parent, fileSystem, metadata)
+    fileSystem.copyFile(srcPath, destPath)
+    fileSystem.changeOwnerAndAttrs(destPath, metadata)
+    map["$srcPath"] = fileSystem.getMetadata(srcPath)
+    map
+  } else {
+    mutableMapOf()
   }
 
   private fun calculateMissingFiles(

@@ -36,12 +36,12 @@ data class FileSystem(
   /**
    * Recursively creates parent directories for the destination path and copies the source file there if it doesn't exist.
    *
-   * @param destPath The destination dir that we are recreating the tree for.
    * @param srcPath The source dir that we are using as reference.
+   * @param destPath The destination dir that we are recreating the tree for.
    */
-  fun createParentDirs(destPath: Path?, srcPath: Path?) {
+  fun createParentDirs(srcPath: Path?, destPath: Path?) {
     if (destPath != null && srcPath != null && !exists(destPath)) {
-      createParentDirs(destPath.parent, srcPath.parent)
+      createParentDirs(srcPath.parent, destPath.parent)
       copyFile(srcPath, destPath)
     }
   }

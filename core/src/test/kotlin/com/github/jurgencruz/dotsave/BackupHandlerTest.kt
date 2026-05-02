@@ -62,6 +62,17 @@ class BackupHandlerTest {
     val config = Config(listOf(getProfile1(), getProfile2()))
     val copyList = mutableListOf<Pair<Path, FileMetaData>>()
     val changeOwnerAndAttrs: (Path, FileMetaData) -> Unit = { p, m -> copyList.add(p to m) }
+    val walk = { a: Path, d: Int ->
+      when (d) {
+        1    -> sequenceOf(
+          a,
+          a.resolve("file1"),
+          a.resolve("file2"),
+        )
+
+        else -> sequenceOf(a)
+      }
+    }
     val fileSystem = FileSystem(
       existsStub,
       isDirectoryStub,
@@ -73,16 +84,18 @@ class BackupHandlerTest {
       getMetadataStub,
       readStub,
       writeStub,
-      walkStub
+      walk
     )
     val result = BackupHandler.backup(config, config.profiles[0], backupPath, "owner", logStub, fileSystem)
     assertThat(result.exceptionOrNull()).isNull()
-    assertThat(copyList).hasSize(2)
+    assertThat(copyList).hasSize(4)
     val expectedMetadata = FileMetaData("owner", "r--r--r--")
     assertThat(copyList).zipSatisfy(
       listOf(
         "backup/program1/file1" to expectedMetadata,
-        "backup/program1/folder2" to expectedMetadata
+        "backup/program1/folder2" to expectedMetadata,
+        "backup/program1/folder2/file1" to expectedMetadata,
+        "backup/program1/folder2/file2" to expectedMetadata
       )
     ) { (srcPath, metadata), (expectedSrc, expectedMetadata) ->
       assertThat(srcPath).hasToString(expectedSrc)
@@ -100,6 +113,17 @@ class BackupHandlerTest {
       ms = s
       Result.success(Unit)
     }
+    val walk = { a: Path, d: Int ->
+      when (d) {
+        1    -> sequenceOf(
+          a,
+          a.resolve("file1"),
+          a.resolve("file2"),
+        )
+
+        else -> sequenceOf(a)
+      }
+    }
     val fileSystem = FileSystem(
       existsStub,
       isDirectoryStub,
@@ -111,12 +135,12 @@ class BackupHandlerTest {
       getMetadataStub,
       readStub,
       write,
-      walkStub
+      walk
     )
     val result = BackupHandler.backup(config, config.profiles[0], backupPath, "owner", logStub, fileSystem)
     assertThat(result.exceptionOrNull()).isNull()
     assertThat(wp).hasToString("backup/program1.json")
-    assertThat(ms).isEqualTo("""{"/root1/file1":{"owner":"owner","permissions":"r--------"},"/root1/folder2":{"owner":"owner","permissions":"r--------"}}""")
+    assertThat(ms).isEqualTo("""{"/root1/file1":{"owner":"owner","permissions":"r--------"},"/root1/folder2/file1":{"owner":"owner","permissions":"r--------"},"/root1/folder2/file2":{"owner":"owner","permissions":"r--------"},"/root1/folder2":{"owner":"owner","permissions":"r--------"}}""")
   }
 
   @Test

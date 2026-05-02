@@ -67,12 +67,12 @@ object RestoreHandler {
     }
     return if (fileSystem.isFile(srcPath)) {
       runCatching {
-        fileSystem.createParentDirs(destPath.parent, srcPath.parent)
+        fileSystem.createParentDirs(srcPath.parent, destPath.parent)
         fileSystem.copyFile(srcPath, destPath)
       }
     } else {
       runCatching {
-        fileSystem.createParentDirs(destPath.parent, srcPath.parent)
+        fileSystem.createParentDirs(srcPath.parent, destPath.parent)
         fileSystem.copyFile(srcPath, destPath)
         fileSystem.walk(srcPath, 1)
       }.flatMap { files ->
