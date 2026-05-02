@@ -233,9 +233,9 @@ class BackupHandlerTest {
           a.resolve("file3"),
           a.resolve("folder4/file1"),
           a.resolve("folder4/file2"),
-          a.resolve("ignore1"),
-          a.resolve("ignore2/file1"),
-          a.resolve("ignore2/file2")
+          a.resolve("fileIgnore1"),
+          a.resolve("folderIgnore2/file1"),
+          a.resolve("folderIgnore2/file2")
         )
       }
     }
@@ -262,8 +262,8 @@ class BackupHandlerTest {
     val config = Config(
       listOf(
         Profile("program1", "/root", listOf("file1", "folder2"), includeProfiles = listOf("include1")),
-        Profile("include1", "/root", listOf("file3", "folder4"), listOf("ignore1"), listOf("include2")),
-        Profile("include2", "/root/sub", listOf("file5", "folder6"), listOf("ignore2"))
+        Profile("include1", "/root", listOf("file3", "folder4"), listOf("fileIgnore1"), listOf("include2")),
+        Profile("include2", "/root/sub", listOf("file5", "folder6"), listOf("folderIgnore2"))
       )
     )
     val copyList = mutableListOf<Pair<Path, Path>>()
@@ -278,13 +278,13 @@ class BackupHandlerTest {
           a.resolve("file3"),
           a.resolve("folder4/file1"),
           a.resolve("folder4/file2"),
-          a.resolve("ignore1"),
-          a.resolve("missing1"),
+          a.resolve("fileIgnore1"),
+          a.resolve("fileMissing1"),
           a.resolve("sub/file5"),
           a.resolve("sub/folder6/file1"),
           a.resolve("sub/folder6/file2"),
-          a.resolve("sub/ignore2/file1"),
-          a.resolve("sub/ignore2/file2"),
+          a.resolve("sub/folderIgnore2/file1"),
+          a.resolve("sub/folderIgnore2/file2"),
         )
 
         d == 1             -> sequenceOf(
@@ -311,7 +311,7 @@ class BackupHandlerTest {
     )
     val result = BackupHandler.backup(config, config.profiles[0], backupPath, "owner", logStub, fileSystem)
     assertThat(result.exceptionOrNull()).isNull()
-    assertThat(result.getOrThrow().map(Path::toString)).containsExactly("/root/missing1")
+    assertThat(result.getOrThrow().map(Path::toString)).containsExactly("/root/fileMissing1")
     assertThat(copyList).hasSize(12)
     assertThat(copyList).zipSatisfy(
       listOf(
@@ -338,7 +338,7 @@ class BackupHandlerTest {
   fun backupShouldMergeInheritedProfiles() {
     val config = Config(
       listOf(
-        Profile("program1", "/root1", listOf("file1", "folder2"), listOf("missing1", "missing2"), inheritProfiles = listOf("inherit1")),
+        Profile("program1", "/root1", listOf("file1", "folder2"), listOf("fileMissing1", "fileMissing2"), inheritProfiles = listOf("inherit1")),
         Profile("inherit1", "/root1/sub2", listOf("file3", "folder4"), includeProfiles = listOf("include1")),
         Profile("include1", "/root3", listOf("file5", "folder6"))
       )
@@ -350,8 +350,8 @@ class BackupHandlerTest {
         1    -> sequenceOf(a)
         else -> sequenceOf(
           a,
-          a.resolve("missing1"),
-          a.resolve("missing2")
+          a.resolve("fileMissing1"),
+          a.resolve("fileMissing2")
         )
       }
     }
@@ -370,7 +370,7 @@ class BackupHandlerTest {
     )
     val result = BackupHandler.backup(config, config.profiles[0], backupPath, "owner", logStub, fileSystem)
     assertThat(result.exceptionOrNull()).isNull()
-    assertThat(result.getOrThrow().map(Path::toString)).containsExactly("/root3/missing1", "/root3/missing2")
+    assertThat(result.getOrThrow().map(Path::toString)).containsExactly("/root3/fileMissing1", "/root3/fileMissing2")
     assertThat(copyList).hasSize(6)
     assertThat(copyList).zipSatisfy(
       listOf(
@@ -387,6 +387,6 @@ class BackupHandlerTest {
     }
   }
 
-  private fun getProfile1() = Profile("program1", "/root1", listOf("file1", "folder2"), listOf("ignore1", "ignore2"))
+  private fun getProfile1() = Profile("program1", "/root1", listOf("file1", "folder2"), listOf("fileIgnore1", "folderIgnore2"))
   private fun getProfile2() = Profile("program2", "/root2", listOf("file3", "folder4"))
 }

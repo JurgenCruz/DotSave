@@ -219,9 +219,13 @@ object BackupHandler {
   ) = roots.flatMap {
     fileSystem.walk(it).drop(1).toList()
   }.filter {
-    notIncludedOrIgnored(copiedPaths, ignoredPaths, it)
+    notIncludedOrIgnoredOrDirectories(copiedPaths, ignoredPaths, it, fileSystem)
   }
 
-  private fun notIncludedOrIgnored(copiedPaths: MutableSet<Path>, ignoredPaths: MutableSet<Path>, file: Path) =
-    !(ignoredPaths.any { file.startsWith(it) } || copiedPaths.any { file == it })
+  private fun notIncludedOrIgnoredOrDirectories(
+    copiedPaths: MutableSet<Path>,
+    ignoredPaths: MutableSet<Path>,
+    file: Path,
+    fileSystem: FileSystem
+  ) = !(fileSystem.isDirectory(file) || ignoredPaths.any { file.startsWith(it) } || copiedPaths.any { file == it })
 }
