@@ -22,6 +22,8 @@ import kotlin.streams.asSequence
  * @constructor Create a new File System object.
  */
 object LocalFileSystem {
+  private val service = FileSystems.getDefault().userPrincipalLookupService
+
   fun getFileSystem(dryRun: Boolean): FileSystem {
     return if (dryRun)
       FileSystem(
@@ -29,7 +31,7 @@ object LocalFileSystem {
         ::isDirectory,
         ::isFile,
         ::dryRunDeleteDir,
-        ::dryRunCreateDirectories,
+        ::dryRunCreateDirectory,
         ::dryRunCopyFile,
         ::dryRunChangeOwnerAndAttrs,
         ::getMetadata,
@@ -62,7 +64,7 @@ object LocalFileSystem {
     Files.createDirectory(path)
   }
 
-  private fun dryRunCreateDirectories(path: Path) {}
+  private fun dryRunCreateDirectory(path: Path) {}
   private fun copyFile(srcPath: Path, destPath: Path) = Files.copy(
     srcPath,
     destPath,
@@ -73,9 +75,8 @@ object LocalFileSystem {
 
   private fun dryRunCopyFile(srcPath: Path, destPath: Path) {}
   private fun changeOwnerAndAttrs(path: Path, metadata: FileMetaData) {
-    val service = FileSystems.getDefault().userPrincipalLookupService
-    val group = service.lookupPrincipalByGroupName(metadata.owner)
     val owner = service.lookupPrincipalByName(metadata.owner)
+    val group = service.lookupPrincipalByGroupName(metadata.owner)
     path.setOwner(owner)
     Files.getFileAttributeView(path, PosixFileAttributeView::class.java, LinkOption.NOFOLLOW_LINKS).setGroup(group)
     path.setPosixFilePermissions(PosixFilePermissions.fromString(metadata.permissions))
