@@ -4,10 +4,10 @@ import com.github.jurgencruz.dotsave.config.Config
 import com.github.jurgencruz.dotsave.config.Profile
 import com.github.jurgencruz.dotsave.dataaccess.FileSystem
 import com.github.jurgencruz.dotsave.logging.LogLevel
+import com.github.jurgencruz.dotsave.utils.deserialize
 import com.github.jurgencruz.dotsave.utils.flatMap
 import com.github.jurgencruz.dotsave.utils.mergeFailures
 import java.nio.file.Path
-import kotlin.io.path.name
 
 /**
  * Handler for the restore process.
@@ -52,34 +52,57 @@ object RestoreHandler {
     backupPath: Path,
     log: (LogLevel, String) -> Unit,
     fileSystem: FileSystem
-  ) = backupPath.resolve(profile.name).let { bPath ->
+  ) = fileSystem.read(backupPath.resolve("${profile.name}.json")).flatMap {
+    deserialize<Map<String, FileMetaData>>(it)
+  }.flatMap { metaDatas ->
+    val bPath = backupPath.resolve(profile.name)
     profile.includePath.asSequence().map { inc ->
-      val srcPath = bPath.resolve(inc)
-      val desPath = profile.rootPath.resolve(inc)
-      log(LogLevel.INFO, "Copying '$srcPath' to '$desPath'")
-      copy(srcPath, desPath, fileSystem)
+      copy(bPath, profile.rootPath, inc, metaDatas, fileSystem, log)
     }.mergeFailures().map { }
   }
 
-  private fun copy(srcPath: Path, destPath: Path, fileSystem: FileSystem): Result<Unit> {
+  private fun copy(
+    backupPath: Path,
+    rootPath: Path,
+    relativePath: Path,
+    metaDatas: Map<String, FileMetaData>,
+    fileSystem: FileSystem,
+    log: (LogLevel, String) -> Unit
+  ): Result<Unit> {
+    val srcPath = backupPath.resolve(relativePath)
+    val destPath = rootPath.resolve(relativePath)
+    log(LogLevel.INFO, "Copying '$srcPath' to '$destPath'")
     if (!fileSystem.exists(srcPath)) {
       return Result.failure(IllegalStateException("Path '$srcPath' does not exist, cannot copy to '$destPath'."))
     }
     return if (fileSystem.isFile(srcPath)) {
       runCatching {
-        fileSystem.createParentDirs(srcPath.parent, destPath.parent)
+        createParentDirs(srcPath.parent, destPath.parent, fileSystem, metaDatas)
         fileSystem.copyFile(srcPath, destPath)
+        val metadata = metaDatas["$destPath"] ?: throw IllegalStateException("No metadata for '$destPath'")
+        fileSystem.changeOwnerAndAttrs(destPath, metadata)
       }
     } else {
       runCatching {
-        fileSystem.createParentDirs(srcPath.parent, destPath.parent)
+        createParentDirs(srcPath.parent, destPath.parent, fileSystem, metaDatas)
         fileSystem.copyFile(srcPath, destPath)
+        val metadata = metaDatas["$destPath"] ?: throw IllegalStateException("No metadata for '$destPath'")
+        fileSystem.changeOwnerAndAttrs(destPath, metadata)
         fileSystem.walk(srcPath, 1)
       }.flatMap { files ->
-        files.drop(1).map { srcFile ->
-          copy(srcFile, destPath.resolve(srcFile.name), fileSystem)
+        files.drop(1).map { walkFile ->
+          copy(srcPath, destPath, walkFile.fileName, metaDatas, fileSystem, log)
         }.mergeFailures().map { }
       }
+    }
+  }
+
+  private fun createParentDirs(srcPath: Path?, destPath: Path?, fileSystem: FileSystem, metaDatas: Map<String, FileMetaData>) {
+    if (destPath != null && srcPath != null && !fileSystem.exists(destPath)) {
+      createParentDirs(srcPath.parent, destPath.parent, fileSystem, metaDatas)
+      fileSystem.copyFile(srcPath, destPath)
+      val metadata = metaDatas["$destPath"] ?: throw IllegalStateException("No metadata for '$destPath'")
+      fileSystem.changeOwnerAndAttrs(destPath, metadata)
     }
   }
 }

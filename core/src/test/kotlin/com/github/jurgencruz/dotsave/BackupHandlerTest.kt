@@ -60,8 +60,8 @@ class BackupHandlerTest {
   @Test
   fun backupShouldChangeOwnerAndPermissionsOfBackedUpFiles() {
     val config = Config(listOf(getProfile1(), getProfile2()))
-    val copyList = mutableListOf<Pair<Path, FileMetaData>>()
-    val changeOwnerAndAttrs: (Path, FileMetaData) -> Unit = { p, m -> copyList.add(p to m) }
+    val changeList = mutableListOf<Pair<Path, FileMetaData>>()
+    val changeOwnerAndAttrs: (Path, FileMetaData) -> Unit = { p, m -> changeList.add(p to m) }
     val walk = { a: Path, d: Int ->
       when (d) {
         1    -> sequenceOf(
@@ -88,9 +88,9 @@ class BackupHandlerTest {
     )
     val result = BackupHandler.backup(config, config.profiles[0], backupPath, "owner", logStub, fileSystem)
     assertThat(result.exceptionOrNull()).isNull()
-    assertThat(copyList).hasSize(4)
+    assertThat(changeList).hasSize(4)
     val expectedMetadata = FileMetaData("owner", "r--r--r--")
-    assertThat(copyList).zipSatisfy(
+    assertThat(changeList).zipSatisfy(
       listOf(
         "backup/program1/file1" to expectedMetadata,
         "backup/program1/folder2" to expectedMetadata,

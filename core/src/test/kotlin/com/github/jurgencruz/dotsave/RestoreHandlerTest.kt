@@ -18,9 +18,10 @@ class RestoreHandlerTest {
   val isFileStub = { path: Path -> path.name.startsWith("file") }
   val deleteDirStub = { _: Path -> true }
   val createDirsStub = { _: Path -> }
+  val copyStub = { _: Path, _: Path -> }
   val changeOwnerAndAttrsStub = { _: Path, _: FileMetaData -> }
   val getMetadataStub = { _: Path -> FileMetaData("owner", "r--r--r--") }
-  val readStub = { _: Path -> Result.success("") }
+  val readStub = { _: Path -> Result.success("""{"/root1/file1":{"owner":"owner","permissions":"r--------"},"/root1/folder2/file1":{"owner":"owner","permissions":"r--------"},"/root1/folder2/file2":{"owner":"owner","permissions":"r--------"},"/root1/folder2":{"owner":"owner","permissions":"r--------"}}""") }
   val writeStub = { _: Path, _: String -> Result.success(Unit) }
   val walkStub = { p: Path, _: Int -> sequenceOf(p) }
 
@@ -53,6 +54,52 @@ class RestoreHandlerTest {
     ) { (srcPath, destPath), (expectedSrc, expectedDest) ->
       assertThat(srcPath).hasToString(expectedSrc)
       assertThat(destPath).hasToString(expectedDest)
+    }
+  }
+
+  @Test
+  fun restoreShouldChangeOwnerAndPermissionsOfRestoredFiles() {
+    val config = Config(listOf(getProfile1(), getProfile2()))
+    val changeList = mutableListOf<Pair<Path, FileMetaData>>()
+    val changeOwnerAndAttrs: (Path, FileMetaData) -> Unit = { p, m -> changeList.add(p to m) }
+    val walk = { a: Path, d: Int ->
+      when (d) {
+        1    -> sequenceOf(
+          a,
+          a.resolve("file1"),
+          a.resolve("file2"),
+        )
+
+        else -> sequenceOf(a)
+      }
+    }
+    val fileSystem = FileSystem(
+      existsStub,
+      isDirectoryStub,
+      isFileStub,
+      deleteDirStub,
+      createDirsStub,
+      copyStub,
+      changeOwnerAndAttrs,
+      getMetadataStub,
+      readStub,
+      writeStub,
+      walk
+    )
+    val result = RestoreHandler.restore(config, config.profiles[0], backupPath, logStub, fileSystem)
+    assertThat(result.exceptionOrNull()).isNull()
+    assertThat(changeList).hasSize(4)
+    val expectedMetadata = FileMetaData("owner", "r--------")
+    assertThat(changeList).zipSatisfy(
+      listOf(
+        "/root1/file1" to expectedMetadata,
+        "/root1/folder2" to expectedMetadata,
+        "/root1/folder2/file1" to expectedMetadata,
+        "/root1/folder2/file2" to expectedMetadata
+      )
+    ) { (srcPath, metaData), (expectedSrc, expectedMetadata) ->
+      assertThat(srcPath).hasToString(expectedSrc)
+      assertThat(metaData).isEqualTo(expectedMetadata)
     }
   }
 
@@ -114,6 +161,14 @@ class RestoreHandlerTest {
     )
     val copyList = mutableListOf<Pair<Path, Path>>()
     val copy: (Path, Path) -> Unit = { p1, p2 -> copyList.add(p1 to p2) }
+    val read = { p: Path ->
+      when (p) {
+        Path("backup/program1.json") -> Result.success("""{"/root1/file1":{"owner":"owner","permissions":"r--------"},"/root1/folder2":{"owner":"owner","permissions":"r--------"}}""")
+        Path("backup/include1.json") -> Result.success("""{"/root2/file3":{"owner":"owner","permissions":"r--------"},"/root2/folder4":{"owner":"owner","permissions":"r--------"}}""")
+        Path("backup/include2.json") -> Result.success("""{"/root3/file5":{"owner":"owner","permissions":"r--------"},"/root3/folder6":{"owner":"owner","permissions":"r--------"}}""")
+        else                         -> Result.success("""{}""")
+      }
+    }
     val fileSystem = FileSystem(
       existsStub,
       isDirectoryStub,
@@ -123,7 +178,7 @@ class RestoreHandlerTest {
       copy,
       changeOwnerAndAttrsStub,
       getMetadataStub,
-      readStub,
+      read,
       writeStub,
       walkStub
     )
@@ -156,6 +211,17 @@ class RestoreHandlerTest {
     )
     val copyList = mutableListOf<Pair<Path, Path>>()
     val copy: (Path, Path) -> Unit = { p1, p2 -> copyList.add(p1 to p2) }
+    val read = { p: Path ->
+      when (p) {
+        Path("backup/program1.json") ->
+          Result.success("""{"/root1/file1":{"owner":"owner","permissions":"r--------"},"/root1/sub2/file3":{"owner":"owner","permissions":"r--------"},"/root1/sub2/folder4":{"owner":"owner","permissions":"r--------"},"/root1/folder2":{"owner":"owner","permissions":"r--------"}}""")
+
+        Path("backup/include1.json") ->
+          Result.success("""{"/root3/file5":{"owner":"owner","permissions":"r--------"},"/root3/folder6":{"owner":"owner","permissions":"r--------"}}""")
+
+        else                         -> Result.success("""{}""")
+      }
+    }
     val fileSystem = FileSystem(
       existsStub,
       isDirectoryStub,
@@ -165,7 +231,7 @@ class RestoreHandlerTest {
       copy,
       changeOwnerAndAttrsStub,
       getMetadataStub,
-      readStub,
+      read,
       writeStub,
       walkStub
     )

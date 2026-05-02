@@ -34,19 +34,6 @@ data class FileSystem(
   private val mWalk: (Path, Int) -> Sequence<Path>
 ) {
   /**
-   * Recursively creates parent directories for the destination path and copies the source file there if it doesn't exist.
-   *
-   * @param srcPath The source dir that we are using as reference.
-   * @param destPath The destination dir that we are recreating the tree for.
-   */
-  fun createParentDirs(srcPath: Path?, destPath: Path?) {
-    if (destPath != null && srcPath != null && !exists(destPath)) {
-      createParentDirs(srcPath.parent, destPath.parent)
-      copyFile(srcPath, destPath)
-    }
-  }
-
-  /**
    * Walks down through the filesystem starting from the specified path up to a maximum depth.
    *
    * @param path The path to walk down.
