@@ -77,17 +77,19 @@ object RestoreHandler {
     }
     return if (fileSystem.isFile(srcPath)) {
       runCatching {
-        createParentDirs(srcPath.parent, destPath.parent, fileSystem, metaDatas)
+        createParentDirs(srcPath.parent, destPath.parent, fileSystem, metaDatas, log)
         fileSystem.copyFile(srcPath, destPath)
-        val metadata = metaDatas["$destPath"] ?: throw IllegalStateException("No metadata for '$destPath'")
-        fileSystem.changeOwnerAndAttrs(destPath, metadata)
+        val metaData = metaDatas["$destPath"] ?: throw IllegalStateException("No metadata for '$destPath'")
+        log(LogLevel.INFO, "Changing '$destPath's owner to ${metaData.owner} and permissions to ${metaData.permissions}.")
+        fileSystem.changeOwnerAndAttrs(destPath, metaData)
       }
     } else {
       runCatching {
-        createParentDirs(srcPath.parent, destPath.parent, fileSystem, metaDatas)
+        createParentDirs(srcPath.parent, destPath.parent, fileSystem, metaDatas, log)
         fileSystem.copyFile(srcPath, destPath)
-        val metadata = metaDatas["$destPath"] ?: throw IllegalStateException("No metadata for '$destPath'")
-        fileSystem.changeOwnerAndAttrs(destPath, metadata)
+        val metaData = metaDatas["$destPath"] ?: throw IllegalStateException("No metadata for '$destPath'")
+        log(LogLevel.INFO, "Changing '$destPath's owner to ${metaData.owner} and permissions to ${metaData.permissions}.")
+        fileSystem.changeOwnerAndAttrs(destPath, metaData)
         fileSystem.walk(srcPath, 1)
       }.flatMap { files ->
         files.drop(1).map { walkFile ->
@@ -97,12 +99,19 @@ object RestoreHandler {
     }
   }
 
-  private fun createParentDirs(srcPath: Path?, destPath: Path?, fileSystem: FileSystem, metaDatas: Map<String, FileMetaData>) {
+  private fun createParentDirs(
+    srcPath: Path?,
+    destPath: Path?,
+    fileSystem: FileSystem,
+    metaDatas: Map<String, FileMetaData>,
+    log: (LogLevel, String) -> Unit
+  ) {
     if (destPath != null && srcPath != null && !fileSystem.exists(destPath)) {
-      createParentDirs(srcPath.parent, destPath.parent, fileSystem, metaDatas)
+      createParentDirs(srcPath.parent, destPath.parent, fileSystem, metaDatas, log)
       fileSystem.copyFile(srcPath, destPath)
-      val metadata = metaDatas["$destPath"] ?: throw IllegalStateException("No metadata for '$destPath'")
-      fileSystem.changeOwnerAndAttrs(destPath, metadata)
+      val metaData = metaDatas["$destPath"] ?: throw IllegalStateException("No metadata for '$destPath'")
+      log(LogLevel.INFO, "Changing '$destPath's owner to ${metaData.owner} and permissions to ${metaData.permissions}.")
+      fileSystem.changeOwnerAndAttrs(destPath, metaData)
     }
   }
 }

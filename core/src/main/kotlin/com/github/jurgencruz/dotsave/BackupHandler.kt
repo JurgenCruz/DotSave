@@ -21,6 +21,7 @@ object BackupHandler {
    * @param config The backup configuration.
    * @param profile The profile to execute.
    * @param backupPath The path of the directory to back up to.
+   * @param owner The user that will own the backed up files.
    * @param log The logger function.
    * @param fileSystem The group of functions to interact with the File System.
    * @return A result object with the list of missing files if successful or exception if failure.
@@ -57,7 +58,7 @@ object BackupHandler {
   }.onSuccess { (path) ->
     log(LogLevel.INFO, "Recreating directory: $path")
   }.flatMap { (path, pair) ->
-    recreateDir(path, fileSystem, metaData).map { pair }
+    recreateDir(path, fileSystem, metaData, log).map { pair }
   }.onSuccess { (p, _) ->
     log(LogLevel.INFO, "Backing up profile: ${p.name}")
   }.flatMap { (profile, lists) ->
@@ -119,7 +120,7 @@ object BackupHandler {
     ignoredPaths.addAll(newIgnoredPaths)
   }
 
-  private fun recreateDir(path: Path, fileSystem: FileSystem, metaData: FileMetaData): Result<Unit> {
+  private fun recreateDir(path: Path, fileSystem: FileSystem, metaData: FileMetaData, log: (LogLevel, String) -> Unit): Result<Unit> {
     if (fileSystem.exists(path)) {
       if (!fileSystem.isDirectory(path)) {
         return Result.failure(IllegalStateException("Path '$path' is not a directory, cannot recreate."))
@@ -130,6 +131,7 @@ object BackupHandler {
     }
     return runCatching {
       fileSystem.createDirectory(path)
+      log(LogLevel.INFO, "Changing '$path's owner to ${metaData.owner} and permissions to ${metaData.permissions}.")
       fileSystem.changeOwnerAndAttrs(path, metaData)
     }
   }
@@ -151,6 +153,7 @@ object BackupHandler {
     }.flatMap { mds ->
       val mp = backupPath.resolve("${profile.name}.json")
       fileSystem.write(mp, mds).mapCatching {
+        log(LogLevel.INFO, "Changing '$mp's owner to ${metaData.owner} and permissions to ${metaData.permissions}.")
         fileSystem.changeOwnerAndAttrs(mp, metaData)
       }.map { metaDatas.keys.toList() }
     }
@@ -172,16 +175,18 @@ object BackupHandler {
     }
     return if (fileSystem.isFile(srcPath)) {
       runCatching {
-        val map = createParentDirs(srcPath.parent, destPath.parent, fileSystem, metaData)
+        val map = createParentDirs(srcPath.parent, destPath.parent, fileSystem, metaData, log)
         fileSystem.copyFile(srcPath, destPath)
+        log(LogLevel.INFO, "Changing '$destPath's owner to ${metaData.owner} and permissions to ${metaData.permissions}.")
         fileSystem.changeOwnerAndAttrs(destPath, metaData)
         map[srcPath] = fileSystem.getMetadata(srcPath)
         map
       }
     } else {
       runCatching {
-        val map = createParentDirs(srcPath.parent, destPath.parent, fileSystem, metaData)
+        val map = createParentDirs(srcPath.parent, destPath.parent, fileSystem, metaData, log)
         fileSystem.copyFile(srcPath, destPath)
+        log(LogLevel.INFO, "Changing '$destPath's owner to ${metaData.owner} and permissions to ${metaData.permissions}.")
         fileSystem.changeOwnerAndAttrs(destPath, metaData)
         fileSystem.walk(srcPath, 1) to map
       }.flatMap { (files, map) ->
@@ -202,10 +207,12 @@ object BackupHandler {
     srcPath: Path?,
     destPath: Path?,
     fileSystem: FileSystem,
-    metaData: FileMetaData
+    metaData: FileMetaData,
+    log: (LogLevel, String) -> Unit
   ): MutableMap<Path, FileMetaData> = if (destPath != null && srcPath != null && !fileSystem.exists(destPath)) {
-    val map = createParentDirs(srcPath.parent, destPath.parent, fileSystem, metaData)
+    val map = createParentDirs(srcPath.parent, destPath.parent, fileSystem, metaData, log)
     fileSystem.copyFile(srcPath, destPath)
+    log(LogLevel.INFO, "Changing '$destPath's owner to ${metaData.owner} and permissions to ${metaData.permissions}.")
     fileSystem.changeOwnerAndAttrs(destPath, metaData)
     map[srcPath] = fileSystem.getMetadata(srcPath)
     map
