@@ -268,9 +268,9 @@ class BackupHandlerTest {
     )
     val copyList = mutableListOf<Pair<Path, Path>>()
     val copy: (Path, Path) -> Unit = { p1, p2 -> copyList.add(p1 to p2) }
-    val walk = { a: Path, _: Int ->
-      when (a) {
-        Path("/root")     -> sequenceOf(
+    val walk = { a: Path, d: Int ->
+      when {
+        a == Path("/root") -> sequenceOf(
           a,
           a.resolve("file1"),
           a.resolve("folder2/file1"),
@@ -287,16 +287,13 @@ class BackupHandlerTest {
           a.resolve("sub/ignore2/file2"),
         )
 
-        Path("/root/sub") -> sequenceOf(
+        d == 1             -> sequenceOf(
           a,
-          a.resolve("file5"),
-          a.resolve("folder6/file1"),
-          a.resolve("folder6/file2"),
-          a.resolve("ignore2/file1"),
-          a.resolve("ignore2/file2"),
+          a.resolve("file1"),
+          a.resolve("file2"),
         )
 
-        else              -> sequenceOf<Path>()
+        else               -> sequenceOf<Path>()
       }
     }
     val fileSystem = FileSystem(
@@ -315,15 +312,21 @@ class BackupHandlerTest {
     val result = BackupHandler.backup(config, config.profiles[0], backupPath, "owner", logStub, fileSystem)
     assertThat(result.exceptionOrNull()).isNull()
     assertThat(result.getOrThrow().map(Path::toString)).containsExactly("/root/missing1")
-    assertThat(copyList).hasSize(6)
+    assertThat(copyList).hasSize(12)
     assertThat(copyList).zipSatisfy(
       listOf(
         "/root/sub/file5" to "backup/include2/file5",
         "/root/sub/folder6" to "backup/include2/folder6",
+        "/root/sub/folder6/file1" to "backup/include2/folder6/file1",
+        "/root/sub/folder6/file2" to "backup/include2/folder6/file2",
         "/root/file3" to "backup/include1/file3",
         "/root/folder4" to "backup/include1/folder4",
+        "/root/folder4/file1" to "backup/include1/folder4/file1",
+        "/root/folder4/file2" to "backup/include1/folder4/file2",
         "/root/file1" to "backup/program1/file1",
-        "/root/folder2" to "backup/program1/folder2"
+        "/root/folder2" to "backup/program1/folder2",
+        "/root/folder2/file1" to "backup/program1/folder2/file1",
+        "/root/folder2/file2" to "backup/program1/folder2/file2",
       )
     ) { (srcPath, destPath), (expectedSrc, expectedDest) ->
       assertThat(srcPath).hasToString(expectedSrc)
