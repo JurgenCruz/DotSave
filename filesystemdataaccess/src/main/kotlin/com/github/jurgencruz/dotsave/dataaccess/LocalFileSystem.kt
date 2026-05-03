@@ -15,6 +15,7 @@ import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.setOwner
 import kotlin.io.path.setPosixFilePermissions
+import kotlin.io.path.writeText
 import kotlin.streams.asSequence
 
 /**
@@ -90,7 +91,7 @@ object LocalFileSystem {
 
   private fun read(path: Path) = runCatching { path.toFile().readText(Charsets.UTF_8) }
   private fun write(path: Path, data: String) = runCatching {
-    path.toFile().writeText(data, Charsets.UTF_8)
+    path.writeText(data, Charsets.UTF_8)
   }
 
   private fun dryRunWrite(path: Path, data: String) = Result.success(Unit)

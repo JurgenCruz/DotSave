@@ -14,7 +14,7 @@ import java.nio.file.Path
  */
 @Suppress("HardCodedStringLiteral")
 object BackupHandler {
-  private const val PERMISSIONS = "rw-rw-rw-"
+  private const val PERMISSIONS = "rwxrwxrwx"
 
   /**
    * Backup files based on the configuration on the specified path.
