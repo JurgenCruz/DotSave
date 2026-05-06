@@ -89,7 +89,7 @@ class BackupHandlerTest {
     val result = BackupHandler.backup(config, config.profiles[0], backupPath, "owner", logStub, fileSystem)
     assertThat(result.exceptionOrNull()).isNull()
     assertThat(changeList).hasSize(6)
-    val expectedMetadata = FileMetaData("owner", "rw-rw-rw-")
+    val expectedMetadata = FileMetaData("owner", "rwxrwxrwx")
     assertThat(changeList).zipSatisfy(
       listOf(
         "backup/program1" to expectedMetadata,
