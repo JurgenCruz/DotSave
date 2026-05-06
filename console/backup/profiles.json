@@ -1,0 +1,69 @@
+{
+  "profiles": [
+    {
+      "name": "file1-individual",
+      "description": "Non-shared file1 (Inherit)",
+      "root": "$PROJECT_HOME/root",
+      "include": [
+        "file1.txt"
+      ]
+    },
+    {
+      "name": "file3",
+      "description": "Shared file3 (Include)",
+      "root": "$PROJECT_HOME/root",
+      "include": [
+        "file3.txt"
+      ]
+    },
+    {
+      "name": "folder2-pc",
+      "description": "PC only non-shared folder1 items (Inherit on pc only)",
+      "root": "$PROJECT_HOME/root/folder2",
+      "include": [
+        "f1.txt",
+        "f2.txt"
+      ]
+    },
+    {
+      "name": "folder4-desktop",
+      "description": "Desktop only shared folder4 items (Include on desktop only)",
+      "root": "$PROJECT_HOME/root/folder4",
+      "include": [
+        "f1.txt",
+        "f2.txt"
+      ]
+    },
+    {
+      "name": "root-ignored",
+      "description": "Shared root ignore list (Inherit)",
+      "root": "$PROJECT_HOME/root",
+      "ignore": [
+        "ignore2",
+        "ignore1.txt"
+      ]
+    },
+    {
+      "name": "root",
+      "description": "Shared root items (Include)",
+      "root": "$PROJECT_HOME/root",
+      "includeProfiles": [
+        "file3"
+      ]
+    },
+    {
+      "name": "root-pc",
+      "description": "PC only non-shared root items (Master)",
+      "root": "$PROJECT_HOME/root",
+      "includeProfiles": [
+        "root",
+        "folder4-desktop"
+      ],
+      "inheritProfiles": [
+        "file1-individual",
+        "folder2-pc",
+        "root-ignored"
+      ]
+    }
+  ]
+}

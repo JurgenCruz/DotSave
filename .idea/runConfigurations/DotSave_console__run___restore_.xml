@@ -1,6 +1,11 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="DotSave:console [run]" type="GradleRunConfiguration" factoryName="Gradle">
+  <configuration default="false" name="DotSave:console [run] (restore)" type="GradleRunConfiguration" factoryName="Gradle">
     <ExternalSystemSettings>
+      <option name="env">
+        <map>
+          <entry key="PROJECT_HOME" value="$PROJECT_DIR$/console/testData/" />
+        </map>
+      </option>
       <option name="executionName" />
       <option name="externalProjectPath" value="$PROJECT_DIR$/console" />
       <option name="externalSystemIdString" value="GRADLE" />
@@ -11,7 +16,7 @@
       <option name="taskNames">
         <list>
           <option value="run" />
-          <option value="--args='-b &quot;test.json&quot; -v -d'" />
+          <option value="--args='-r &quot;../../backup/profiles.json&quot; -v -p &quot;root-pc&quot;'" />
         </list>
       </option>
       <option name="vmOptions" />
