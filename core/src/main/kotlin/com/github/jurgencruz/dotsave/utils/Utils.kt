@@ -8,6 +8,8 @@ val sJson = Json {
   ignoreUnknownKeys = true
   allowTrailingComma = true
   allowComments = true
+  prettyPrint = true
+  prettyPrintIndent = "  "
 }
 
 /**

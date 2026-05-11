@@ -142,7 +142,25 @@ class BackupHandlerTest {
     val result = BackupHandler.backup(config, config.profiles[0], backupPath, "owner", logStub, fileSystem)
     assertThat(result.exceptionOrNull()).isNull()
     assertThat(wp).hasToString("backup/program1.json")
-    assertThat(ms).isEqualTo("""{"/root1/file1":{"owner":"owner","permissions":"r--------"},"/root1/folder2/file1":{"owner":"owner","permissions":"r--------"},"/root1/folder2/file2":{"owner":"owner","permissions":"r--------"},"/root1/folder2":{"owner":"owner","permissions":"r--------"}}""")
+    assertThat(ms).isEqualTo(
+      """{
+      |  "/root1/file1": {
+      |    "owner": "owner",
+      |    "permissions": "r--------"
+      |  },
+      |  "/root1/folder2/file1": {
+      |    "owner": "owner",
+      |    "permissions": "r--------"
+      |  },
+      |  "/root1/folder2/file2": {
+      |    "owner": "owner",
+      |    "permissions": "r--------"
+      |  },
+      |  "/root1/folder2": {
+      |    "owner": "owner",
+      |    "permissions": "r--------"
+      |  }
+      |}""".trimMargin())
   }
 
   @Test
