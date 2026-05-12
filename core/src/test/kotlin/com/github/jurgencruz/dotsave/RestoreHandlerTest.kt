@@ -45,11 +45,10 @@ class RestoreHandlerTest {
     )
     val result = RestoreHandler.restore(config, config.profiles[0], backupPath, logStub, fileSystem)
     assertThat(result.exceptionOrNull()).isNull()
-    assertThat(copyList).hasSize(2)
+    assertThat(copyList).hasSize(1)
     assertThat(copyList).zipSatisfy(
       listOf(
-        "backup/program1/file1" to "/root1/file1",
-        "backup/program1/folder2" to "/root1/folder2"
+        "backup/program1/file1" to "/root1/file1"
       )
     ) { (srcPath, destPath), (expectedSrc, expectedDest) ->
       assertThat(srcPath).hasToString(expectedSrc)
@@ -88,12 +87,11 @@ class RestoreHandlerTest {
     )
     val result = RestoreHandler.restore(config, config.profiles[0], backupPath, logStub, fileSystem)
     assertThat(result.exceptionOrNull()).isNull()
-    assertThat(changeList).hasSize(4)
+    assertThat(changeList).hasSize(3)
     val expectedMetadata = FileMetaData("owner", "r--------")
     assertThat(changeList).zipSatisfy(
       listOf(
         "/root1/file1" to expectedMetadata,
-        "/root1/folder2" to expectedMetadata,
         "/root1/folder2/file1" to expectedMetadata,
         "/root1/folder2/file2" to expectedMetadata
       )
@@ -126,7 +124,7 @@ class RestoreHandlerTest {
 
   @Test
   fun restoreShouldAggregateErrorsAndContinue() {
-    val config = Config(listOf(Profile("program1", "/root1", listOf("file1", "folder2", "file3", "folder4"))))
+    val config = Config(listOf(Profile("program1", "/root1", listOf("file1", "file2", "file3", "file4"))))
     var i = 0
     val copy = { _: Path, _: Path -> throw IllegalAccessException("test${++i}") }
     val fileSystem = FileSystem(
@@ -184,15 +182,12 @@ class RestoreHandlerTest {
     )
     val result = RestoreHandler.restore(config, config.profiles[0], backupPath, logStub, fileSystem)
     assertThat(result.exceptionOrNull()).isNull()
-    assertThat(copyList).hasSize(6)
+    assertThat(copyList).hasSize(3)
     assertThat(copyList).zipSatisfy(
       listOf(
         "backup/include2/file5" to "/root3/file5",
-        "backup/include2/folder6" to "/root3/folder6",
         "backup/include1/file3" to "/root2/file3",
-        "backup/include1/folder4" to "/root2/folder4",
-        "backup/program1/file1" to "/root1/file1",
-        "backup/program1/folder2" to "/root1/folder2"
+        "backup/program1/file1" to "/root1/file1"
       )
     ) { (srcPath, destPath), (expectedSrc, expectedDest) ->
       assertThat(srcPath).hasToString(expectedSrc)
@@ -237,15 +232,12 @@ class RestoreHandlerTest {
     )
     val result = RestoreHandler.restore(config, config.profiles[0], backupPath, logStub, fileSystem)
     assertThat(result.exceptionOrNull()).isNull()
-    assertThat(copyList).hasSize(6)
+    assertThat(copyList).hasSize(3)
     assertThat(copyList).zipSatisfy(
       listOf(
         "backup/include1/file5" to "/root3/file5",
-        "backup/include1/folder6" to "/root3/folder6",
         "backup/program1/file1" to "/root1/file1",
-        "backup/program1/folder2" to "/root1/folder2",
         "backup/program1/sub2/file3" to "/root1/sub2/file3",
-        "backup/program1/sub2/folder4" to "/root1/sub2/folder4"
       )
     ) { (srcPath, destPath), (expectedSrc, expectedDest) ->
       assertThat(srcPath).hasToString(expectedSrc)

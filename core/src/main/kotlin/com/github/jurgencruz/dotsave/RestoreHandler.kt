@@ -85,11 +85,7 @@ object RestoreHandler {
       }
     } else {
       runCatching {
-        createParentDirs(srcPath.parent, destPath.parent, fileSystem, metaDatas, log)
-        fileSystem.copyFile(srcPath, destPath)
-        val metaData = metaDatas["$destPath"] ?: throw IllegalStateException("No metadata for '$destPath'")
-        log(LogLevel.INFO, "Changing '$destPath's owner to ${metaData.owner} and permissions to ${metaData.permissions}.")
-        fileSystem.changeOwnerAndAttrs(destPath, metaData)
+        createParentDirs(srcPath, destPath, fileSystem, metaDatas, log)
         fileSystem.walk(srcPath, 1)
       }.flatMap { files ->
         files.drop(1).map { walkFile ->
