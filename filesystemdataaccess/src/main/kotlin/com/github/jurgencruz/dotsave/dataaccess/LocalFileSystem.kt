@@ -66,13 +66,17 @@ object LocalFileSystem {
   }
 
   private fun dryRunCreateDirectory(path: Path) {}
-  private fun copyFile(srcPath: Path, destPath: Path) = Files.copy(
-    srcPath,
-    destPath,
-    LinkOption.NOFOLLOW_LINKS,
-    StandardCopyOption.COPY_ATTRIBUTES,
-    StandardCopyOption.REPLACE_EXISTING
-  )
+  private fun copyFile(srcPath: Path, destPath: Path) {
+    Files.deleteIfExists(destPath)
+    Thread.sleep(2)
+    Files.copy(
+      srcPath,
+      destPath,
+      LinkOption.NOFOLLOW_LINKS,
+      StandardCopyOption.COPY_ATTRIBUTES
+    )
+    check(destPath.exists()) { "Failed to copy '$srcPath' to '$destPath'." }
+  }
 
   private fun dryRunCopyFile(srcPath: Path, destPath: Path) {}
   private fun changeOwnerAndAttrs(path: Path, metadata: FileMetaData) {
